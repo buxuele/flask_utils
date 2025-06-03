@@ -1,0 +1,104 @@
+{% extends "base.html" %} {% block title %}我的文件 - Flask 工具集{% endblock %}
+{% block extra_css %}
+<style>
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+  }
+  .file-item {
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 10px;
+    position: relative;
+  }
+  .file-preview {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 3px;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .file-info {
+    margin-top: 10px;
+  }
+  .file-actions {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: none;
+  }
+  .file-item:hover .file-actions {
+    display: block;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2>我的文件</h2>
+      <div class="btn-group">
+        <button
+          type="button"
+          class="btn btn-outline-primary dropdown-toggle"
+          data-bs-toggle="dropdown"
+        >
+          排序方式
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="?sort=name">按名称</a></li>
+          <li><a class="dropdown-item" href="?sort=date">按日期</a></li>
+          <li><a class="dropdown-item" href="?sort=size">按大小</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="alert alert-info">
+          存储空间使用情况：<span id="storage-usage">计算中...</span>
+        </div>
+
+        <div class="file-grid">
+          <!-- 文件列表将通过后端渲染或AJAX加载 -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 重命名模态框 -->
+<div class="modal fade" id="renameModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">重命名文件</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" class="form-control" id="newFileName" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          取消
+        </button>
+        <button type="button" class="btn btn-primary" id="confirmRename">
+          确定
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // 等实现具体功能时再添加JavaScript代码
+</script>
+{% endblock %}

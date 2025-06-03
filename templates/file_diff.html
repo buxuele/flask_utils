@@ -1,0 +1,55 @@
+{% extends "base.html" %} {% block title %}文件对比 - Flask 工具集{% endblock %}
+{% block extra_css %}
+<link
+  href="https://cdn.bootcdn.net/ajax/libs/prismjs/1.29.0/themes/prism.min.css"
+  rel="stylesheet"
+/>
+<style>
+  .diff-container {
+    font-family: monospace;
+    white-space: pre;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+  }
+  .diff-added {
+    background-color: #e6ffe6;
+  }
+  .diff-removed {
+    background-color: #ffe6e6;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10">
+    <h2 class="text-center mb-4">文件对比工具</h2>
+    <div class="card">
+      <div class="card-body">
+        <form action="/file_diff" method="post" enctype="multipart/form-data">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">文件 1</label>
+                <input type="file" class="form-control" name="file1" />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">文件 2</label>
+                <input type="file" class="form-control" name="file2" />
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">比较文件</button>
+        </form>
+        <div id="diffResult" class="mt-4"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="https://cdn.bootcdn.net/ajax/libs/prismjs/1.29.0/prism.min.js"></script>
+<script>
+  // 等实现具体功能时再添加JavaScript代码
+</script>
+{% endblock %}

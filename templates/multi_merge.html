@@ -1,0 +1,270 @@
+{% extends "base.html" %} {% block title %}多图拼接 - Flask 工具集{% endblock %}
+{% block extra_css %}
+<style>
+  .image-upload-container {
+    border: 2px dashed #ccc;
+    padding: 20px;
+    text-align: center;
+    border-radius: 5px;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+  }
+  .image-upload-container:hover {
+    border-color: #0d6efd;
+    background: #f1f8ff;
+  }
+  .preview-item {
+    flex: 0 0 calc(33.333% - 10px);
+    margin: 5px;
+  }
+  .preview-image {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 5px;
+  }
+  .sortable-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 15px;
+    min-height: 100px;
+    background: #f8f9fa;
+    border-radius: 5px;
+  }
+  .sortable-ghost {
+    opacity: 0.5;
+    background: #e9ecef;
+  }
+  .layout-preview {
+    max-width: 200px;
+    margin: 0 auto;
+    opacity: 0.7;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10">
+    <h2 class="text-center mb-4">多图拼接工具</h2>
+    <div class="card">
+      <div class="card-body">
+        <form
+          action="/multi_merge_process"
+          method="post"
+          enctype="multipart/form-data"
+          id="uploadForm"
+        >
+          <div class="mb-3">
+            <div class="image-upload-container" id="dropZone">
+              <p class="h5 mb-3">拖放图片到此处或点击选择文件</p>
+              <p class="text-muted mb-2">支持上传2-6张图片</p>
+              <p class="small text-muted mb-3">
+                图片会按文件名排序，可在预览区域拖动调整顺序
+              </p>
+              <input
+                type="file"
+                class="form-control"
+                name="images"
+                multiple
+                accept="image/*"
+                required
+              />
+            </div>
+          </div>
+
+          <div id="imagePreview" class="sortable-images mb-3">
+            <p class="text-muted text-center w-100">
+              图片预览区域<br />可拖动调整顺序
+            </p>
+          </div>
+
+          <div class="alert alert-info d-none" id="layoutInfo">
+            <div class="row align-items-center">
+              <div class="col-md-8">
+                <strong>布局预览：</strong>
+                <span id="layoutDescription"></span>
+              </div>
+              <div class="col-md-4">
+                <div id="layoutPreview" class="layout-preview">
+                  <!-- 布局预览图将由 JS 动态生成 -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="btn btn-primary btn-lg d-block mx-auto px-4"
+          >
+            开始拼接
+          </button>
+        </form>
+
+        {% if merged_image %}
+        <div class="preview-container mt-4">
+          <h3 class="text-center mb-4">拼接结果</h3>
+          <img
+            src="data:image/jpeg;base64,{{ merged_image }}"
+            alt="拼接后的图片"
+            class="img-fluid rounded mb-3"
+          />
+          <div class="text-center">
+            <a
+              href="data:image/jpeg;base64,{{ merged_image }}"
+              download="merged_image.jpg"
+              class="btn btn-success btn-lg"
+            >
+              保存图片
+            </a>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="https://cdn.bootcdn.net/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+<script>
+  document
+    .querySelector('input[type="file"]')
+    .addEventListener("change", function () {
+      const fileList = Array.from(this.files);
+      const previewArea = document.getElementById("imagePreview");
+      const layoutInfo = document.getElementById("layoutInfo");
+      const layoutDescription = document.getElementById("layoutDescription");
+      const layoutPreview = document.getElementById("layoutPreview");
+
+      // 清空预览区域
+      previewArea.innerHTML = "";
+
+      if (fileList.length >= 2 && fileList.length <= 6) {
+        // 显示每个文件的预览
+        fileList.forEach((file, index) => {
+          const preview = document.createElement("div");
+          preview.className = "preview-item";
+          preview.innerHTML = `
+                <div class="card">
+                    <img src="${URL.createObjectURL(
+                      file
+                    )}" class="card-img-top preview-image" alt="${file.name}">
+                    <div class="card-body p-2">
+                        <p class="card-text small mb-0">${file.name}</p>
+                    </div>
+                </div>
+            `;
+          previewArea.appendChild(preview);
+        });
+
+        // 显示布局信息
+        layoutInfo.classList.remove("d-none");
+        let layoutText = "";
+        let layoutHTML = "";
+
+        switch (fileList.length) {
+          case 2:
+            layoutText = "将进行左右拼接";
+            layoutHTML = `
+                    <div class="row g-1">
+                        <div class="col-6"><div class="bg-primary p-3">1</div></div>
+                        <div class="col-6"><div class="bg-primary p-3">2</div></div>
+                    </div>`;
+            break;
+          case 3:
+            layoutText = "将进行上下拼接";
+            layoutHTML = `
+                    <div class="row g-1">
+                        <div class="col-12"><div class="bg-primary p-2">1</div></div>
+                        <div class="col-12"><div class="bg-primary p-2">2</div></div>
+                        <div class="col-12"><div class="bg-primary p-2">3</div></div>
+                    </div>`;
+            break;
+          case 4:
+            layoutText = "将进行2×2网格拼接";
+            layoutHTML = `
+                    <div class="row g-1">
+                        <div class="col-6"><div class="bg-primary p-3">1</div></div>
+                        <div class="col-6"><div class="bg-primary p-3">2</div></div>
+                        <div class="col-6"><div class="bg-primary p-3">3</div></div>
+                        <div class="col-6"><div class="bg-primary p-3">4</div></div>
+                    </div>`;
+            break;
+          case 5:
+          case 6:
+            layoutText = "将进行2×3网格拼接";
+            layoutHTML = `
+                    <div class="row g-1">
+                        <div class="col-4"><div class="bg-primary p-2">1</div></div>
+                        <div class="col-4"><div class="bg-primary p-2">2</div></div>
+                        <div class="col-4"><div class="bg-primary p-2">3</div></div>
+                        <div class="col-4"><div class="bg-primary p-2">4</div></div>
+                        <div class="col-4"><div class="bg-primary p-2">5</div></div>
+                        ${
+                          fileList.length === 6
+                            ? '<div class="col-4"><div class="bg-primary p-2">6</div></div>'
+                            : ""
+                        }
+                    </div>`;
+            break;
+        }
+        layoutDescription.textContent = layoutText;
+        layoutPreview.innerHTML = layoutHTML;
+
+        // 启用拖拽排序
+        new Sortable(previewArea, {
+          animation: 150,
+          ghostClass: "sortable-ghost",
+        });
+      } else {
+        previewArea.innerHTML =
+          '<p class="text-danger text-center w-100">请选择2-6张图片</p>';
+        layoutInfo.classList.add("d-none");
+      }
+    });
+
+  // 添加拖放支持
+  const dropZone = document.getElementById("dropZone");
+
+  ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+    dropZone.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  ["dragenter", "dragover"].forEach((eventName) => {
+    dropZone.addEventListener(eventName, highlight, false);
+  });
+
+  ["dragleave", "drop"].forEach((eventName) => {
+    dropZone.addEventListener(eventName, unhighlight, false);
+  });
+
+  function highlight(e) {
+    dropZone.classList.add("border-primary", "bg-light");
+  }
+
+  function unhighlight(e) {
+    dropZone.classList.remove("border-primary", "bg-light");
+  }
+
+  dropZone.addEventListener("drop", handleDrop, false);
+
+  function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    const fileInput = document.querySelector('input[type="file"]');
+
+    // 更新文件输入
+    fileInput.files = files;
+
+    // 触发change事件
+    const event = new Event("change", {
+      bubbles: true,
+    });
+    fileInput.dispatchEvent(event);
+  }
+</script>
+{% endblock %}

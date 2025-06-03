@@ -1,0 +1,24 @@
+# Default .gitignore created by newrepo.bat 
+# Please edit .gitignore to add files or directories you want to ignore 
+# Example: 
+# node_modules/ 
+# *.log 
+
+.venv/
+__pycache__/
+
+
+*.json
+*.bak
+.env
+
+new_repo.bat
+start_repo.py
+
+
+我的要求-提示词.md
+过程记录.md
+
+
+
+

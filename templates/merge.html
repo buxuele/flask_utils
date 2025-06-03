@@ -1,0 +1,115 @@
+{% extends "base.html" %} {% block title %}双图拼接 - Flask 工具集{% endblock %}
+{% block extra_css %}
+<style>
+  .custom-file-upload {
+    border: 2px dashed rgba(0, 0, 0, 0.2);
+    display: inline-block;
+    padding: 2rem;
+    cursor: pointer;
+    border-radius: 1rem;
+    transition: all 0.3s ease;
+  }
+
+  .custom-file-upload:hover {
+    border-color: #0d6efd;
+    background: rgba(13, 110, 253, 0.1);
+  }
+
+  .preview-container {
+    background: #f8f9fa;
+    border-radius: 1rem;
+    padding: 1rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <h2 class="text-center mb-4">双图拼接工具</h2>
+    <div class="card">
+      <div class="card-body">
+        <form action="/merge" method="post" enctype="multipart/form-data">
+          <div class="text-center mb-4">
+            <label class="custom-file-upload d-block mx-auto">
+              <input
+                type="file"
+                name="image1"
+                class="d-none"
+                accept="image/*"
+                required
+                multiple
+              />
+              <div class="h4 mb-3">选择图片</div>
+              <div class="text-muted mb-3">
+                请同时选择两张图片（修改前和修改后的图片）
+              </div>
+              <div class="small text-muted">支持格式：JPG、PNG</div>
+              <div id="fileList" class="mt-3 text-start"></div>
+            </label>
+          </div>
+          <div class="text-center">
+            <div class="form-check mb-3 d-inline-block me-3">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                name="add_text"
+                id="addText"
+              />
+              <label class="form-check-label" for="addText">
+                添加对比文字
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg px-4">
+              合并图片
+            </button>
+          </div>
+        </form>
+
+        {% if merged_image %}
+        <div class="preview-container mt-4">
+          <h3 class="text-center mb-4">合并结果</h3>
+          <img
+            src="data:image/jpeg;base64,{{ merged_image }}"
+            alt="合并后的图片"
+            class="img-fluid rounded mb-3"
+          />
+          <div class="text-center">
+            <a
+              href="data:image/jpeg;base64,{{ merged_image }}"
+              download="merged_image.jpg"
+              class="btn btn-success btn-lg"
+            >
+              保存图片
+            </a>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  document
+    .querySelector('input[type="file"]')
+    .addEventListener("change", function () {
+      const fileList = document.getElementById("fileList");
+      fileList.innerHTML = "";
+
+      if (this.files.length === 2) {
+        for (let i = 0; i < this.files.length; i++) {
+          const file = this.files[i];
+          const fileInfo = document.createElement("div");
+          fileInfo.className = "mb-2";
+          fileInfo.innerHTML = `📁 ${i + 1}. ${file.name}`;
+          fileList.appendChild(fileInfo);
+        }
+        this.closest(".custom-file-upload").classList.add("border-primary");
+      } else {
+        fileList.innerHTML = '<div class="text-danger">请选择两张图片</div>';
+        this.closest(".custom-file-upload").classList.remove("border-primary");
+        this.value = "";
+      }
+    });
+</script>
+{% endblock %}
