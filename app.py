@@ -186,3 +186,5 @@ if __name__ == '__main__':
     Path('templates').mkdir(exist_ok=True)
     Path('uploads').mkdir(exist_ok=True)
     app.run(debug=True)
+
+
