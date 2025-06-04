@@ -91,11 +91,13 @@
                 >图片上传</a
               >
             </li>
+          </ul>
+          <ul class="navbar-nav ms-auto">
             <li class="nav-item">
               <a
-                class="nav-link {% if request.endpoint == 'my_files' %}active{% endif %}"
-                href="/my_files"
-                >我的文件</a
+                class="nav-link {% if request.endpoint == 'prompts' %}active{% endif %}"
+                href="/prompts"
+                >常用提示词</a
               >
             </li>
           </ul>

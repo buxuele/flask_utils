@@ -25,10 +25,14 @@
 {% endblock %} {% block content %}
 <div class="row justify-content-center">
   <div class="col-md-8">
-    <h2 class="text-center mb-4">双图拼接工具</h2>
     <div class="card">
       <div class="card-body">
-        <form action="/merge" method="post" enctype="multipart/form-data">
+        <form
+          action="/merge"
+          method="post"
+          enctype="multipart/form-data"
+          id="mergeForm"
+        >
           <div class="text-center mb-4">
             <label class="custom-file-upload d-block mx-auto">
               <input
@@ -48,7 +52,7 @@
             </label>
           </div>
           <div class="text-center">
-            <div class="form-check mb-3 d-inline-block me-3">
+            <div class="form-check d-inline-block me-3">
               <input
                 class="form-check-input"
                 type="checkbox"
@@ -62,27 +66,32 @@
             <button type="submit" class="btn btn-primary btn-lg px-4">
               合并图片
             </button>
+            <a
+              href="#"
+              id="downloadBtn"
+              download="merged_image.jpg"
+              data-merged="{{ 'true' if merged_image else 'false' }}"
+              class="btn btn-success btn-lg px-4 ms-2 {% if not merged_image %}disabled{% endif %}"
+            >
+              下载图片
+            </a>
           </div>
         </form>
-
         {% if merged_image %}
-        <div class="preview-container mt-4">
-          <h3 class="text-center mb-4">合并结果</h3>
+        <div class="preview-container mt-4" id="previewContainer">
           <img
             src="data:image/jpeg;base64,{{ merged_image }}"
             alt="合并后的图片"
-            class="img-fluid rounded mb-3"
+            class="img-fluid rounded"
+            id="mergedImage"
           />
-          <div class="text-center">
-            <a
-              href="data:image/jpeg;base64,{{ merged_image }}"
-              download="merged_image.jpg"
-              class="btn btn-success btn-lg"
-            >
-              保存图片
-            </a>
-          </div>
         </div>
+        <script>
+          // 设置下载按钮的URL
+          const downloadBtn = document.getElementById("downloadBtn");
+          downloadBtn.href = document.getElementById("mergedImage").src;
+          downloadBtn.classList.remove("disabled");
+        </script>
         {% endif %}
       </div>
     </div>
@@ -90,6 +99,7 @@
 </div>
 {% endblock %} {% block extra_js %}
 <script>
+  // 文件选择处理
   document
     .querySelector('input[type="file"]')
     .addEventListener("change", function () {
@@ -111,5 +121,40 @@
         this.value = "";
       }
     });
+
+  // 处理下载按钮点击事件
+  const downloadBtn = document.getElementById("downloadBtn");
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", function (e) {
+      // 检查按钮是否被禁用
+      if (this.classList.contains("disabled")) {
+        e.preventDefault();
+        return;
+      }
+
+      // 确保有效的下载链接
+      if (!this.href || this.href === "#") {
+        e.preventDefault();
+        return;
+      }
+
+      // 创建提示消息
+      const alert = document.createElement("div");
+      alert.className =
+        "flash-message alert alert-success alert-dismissible fade show";
+      alert.innerHTML = `
+        <div>图片开始下载，请检查浏览器下载栏</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+
+      // 添加到消息容器
+      document.querySelector(".flash-messages").appendChild(alert);
+
+      // 5秒后自动关闭提示
+      setTimeout(() => {
+        bootstrap.Alert.getOrCreateInstance(alert).close();
+      }, 5000);
+    });
+  }
 </script>
 {% endblock %}

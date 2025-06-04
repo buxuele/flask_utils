@@ -1,0 +1,268 @@
+{% extends "base.html" %} {% block title %}常用提示词 - Flask 工具集{% endblock
+%} {% block extra_css %}
+<link
+  href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+  rel="stylesheet"
+/>
+<style>
+  .prompt-list {
+    max-width: 960px; /* 增加20% */
+    margin: 0 auto;
+  }
+  .prompt-item {
+    background: white;
+    border: 2px solid #495057; /* 使用深灰色边框 */
+    border-radius: 0.6rem; /* 增加20% */
+    padding: 1.2rem; /* 增加20% */
+    margin-bottom: 1.2rem; /* 增加20% */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: move;
+    transition: all 0.2s ease;
+    font-size: 1.2em; /* 增加文字大小 */
+  }
+
+  .prompt-item:hover {
+    box-shadow: 0 4px 8px rgba(73, 80, 87, 0.2); /* 使用灰色阴影 */
+    border-color: #343a40; /* 更深的灰色边框 */
+    transform: translateY(-2px); /* 添加悬浮效果 */
+  }
+
+  .prompt-content {
+    flex-grow: 1;
+    margin-right: 1rem;
+    word-break: break-all;
+  }
+  .prompt-actions {
+    white-space: nowrap;
+    gap: 0.5rem; /* 增加按钮之间的间距 */
+    display: flex;
+  }
+
+  .prompt-actions .btn {
+    padding: 0.45rem 0.9rem; /* 增加20% */
+    font-size: 1.05rem; /* 增加20% */
+    border-width: 2px; /* 加粗按钮边框 */
+  }
+
+  .prompt-actions .btn i {
+    font-size: 1.2rem; /* 增加图标大小 */
+  }
+  .prompt-form {
+    max-width: 960px; /* 增加20% */
+    margin: 0 auto 2.4rem; /* 增加20% */
+  }
+  .prompt-form .input-group {
+    border: 2px solid #495057; /* 匹配列表项的深灰色边框 */
+    border-radius: 0.6rem; /* 匹配列表项的圆角 */
+    overflow: hidden;
+  }
+
+  .prompt-form .form-control {
+    border: none;
+    font-size: 1.2em; /* 增加文字大小 */
+    padding: 1.2rem; /* 增加内边距 */
+  }
+
+  .prompt-form .btn {
+    border: none;
+    font-size: 1.2em; /* 增加文字大小 */
+    padding: 1.2rem 2rem; /* 增加内边距 */
+  }
+
+  .prompt-form .btn i {
+    font-size: 1.2em; /* 增加图标大小 */
+  }
+
+  .sortable-ghost {
+    opacity: 0.5;
+    background: #e9ecef;
+  }
+
+  .copy-success {
+    color: #198754;
+    transition: all 0.2s ease;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container py-4">
+  <!-- 新建提示词表单 -->
+  <form class="prompt-form" method="post" action="{{ url_for('add_prompt') }}">
+    <div class="input-group">
+      <input
+        type="text"
+        class="form-control"
+        name="content"
+        placeholder="输入新的提示词"
+        required
+      />
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> 添加
+      </button>
+    </div>
+  </form>
+
+  <!-- 提示词列表 -->
+  <div class="prompt-list" id="promptList">
+    {% for prompt in prompts %}
+    <div class="prompt-item" data-id="{{ prompt.id }}">
+      <div class="prompt-content">{{ prompt.content }}</div>
+      <div class="prompt-actions">
+        <button
+          class="btn btn-outline-primary btn-copy"
+          data-content="{{ prompt.content }}"
+        >
+          <i class="bi bi-clipboard"></i>
+        </button>
+        <button
+          class="btn btn-outline-secondary btn-edit"
+          data-id="{{ prompt.id }}"
+        >
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button
+          class="btn btn-outline-danger btn-delete"
+          data-id="{{ prompt.id }}"
+        >
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- 编辑提示词的模态框 -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">编辑提示词</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form id="editForm" method="post">
+          <input type="hidden" name="prompt_id" id="editPromptId" />
+          <div class="mb-3">
+            <label class="form-label">提示词内容</label>
+            <textarea
+              class="form-control"
+              name="content"
+              id="editContent"
+              rows="3"
+              required
+            ></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          取消
+        </button>
+        <button type="button" class="btn btn-primary" id="saveEdit">
+          保存
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+  // 初始化拖拽排序
+  const promptList = document.getElementById("promptList");
+  new Sortable(promptList, {
+    animation: 150,
+    ghostClass: "sortable-ghost",
+    onEnd: function (evt) {
+      const promptId = evt.item.dataset.id;
+      const newIndex = evt.newIndex;
+
+      fetch("/prompts/reorder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt_id: promptId,
+          new_index: newIndex,
+        }),
+      });
+    },
+  });
+
+  // 复制提示词
+  document.querySelectorAll(".btn-copy").forEach((btn) => {
+    btn.addEventListener("click", async function () {
+      const content = this.dataset.content;
+      try {
+        await navigator.clipboard.writeText(content);
+        const icon = this.querySelector(".bi");
+        icon.classList.remove("bi-clipboard");
+        icon.classList.add("bi-clipboard-check", "copy-success");
+        setTimeout(() => {
+          icon.classList.remove("bi-clipboard-check", "copy-success");
+          icon.classList.add("bi-clipboard");
+        }, 2000);
+      } catch (err) {
+        alert("复制失败，请手动复制");
+      }
+    });
+  });
+
+  // 编辑提示词
+  const editModal = new bootstrap.Modal(document.getElementById("editModal"));
+  document.querySelectorAll(".btn-edit").forEach((btn) => {
+    btn.addEventListener("click", function () {
+      const promptId = this.dataset.id;
+      const content =
+        this.closest(".prompt-item").querySelector(
+          ".prompt-content"
+        ).textContent;
+      document.getElementById("editPromptId").value = promptId;
+      document.getElementById("editContent").value = content;
+      editModal.show();
+    });
+  });
+
+  // 保存编辑
+  document.getElementById("saveEdit").addEventListener("click", function () {
+    const form = document.getElementById("editForm");
+    const promptId = document.getElementById("editPromptId").value;
+    const content = document.getElementById("editContent").value;
+
+    fetch(`/prompts/${promptId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ content }),
+    }).then((response) => {
+      if (response.ok) {
+        window.location.reload();
+      }
+    });
+  });
+
+  // 删除提示词
+  document.querySelectorAll(".btn-delete").forEach((btn) => {
+    btn.addEventListener("click", function () {
+      if (confirm("确定要删除这个提示词吗？")) {
+        const promptId = this.dataset.id;
+        fetch(`/prompts/${promptId}`, {
+          method: "DELETE",
+        }).then((response) => {
+          if (response.ok) {
+            this.closest(".prompt-item").remove();
+          }
+        });
+      }
+    });
+  });
+</script>
+{% endblock %}
