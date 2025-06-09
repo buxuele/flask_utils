@@ -3,6 +3,7 @@
 .idea/
 instance/
 venv/
+nice_venv/
 __pycache__/
 
 
