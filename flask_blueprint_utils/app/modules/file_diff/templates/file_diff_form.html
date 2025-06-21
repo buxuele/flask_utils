@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}文件对比工具 - Flask 工具集{% endblock %}
+
+{% block extra_css %}
+<style>
+  .file-diff-card {
+    max-width: 900px; /* Adjust as needed */
+    margin: 2rem auto;
+  }
+  .custom-file-upload-box { /* Renamed for clarity */
+    border: 2px dashed #ced4da;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: #f8f9fa; /* Light background for the box */
+  }
+  .custom-file-upload-box:hover {
+    border-color: #0d6efd; /* Bootstrap primary blue */
+    background-color: #e9ecef; /* Slightly darker on hover */
+  }
+  .custom-file-upload-box input[type="file"] {
+    display: none; /* Hide the actual input */
+  }
+  #selectedFilesDisplay { /* For displaying selected file names */
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    font-size: 0.9rem;
+  }
+  #selectedFilesDisplay .file-item {
+    padding: 0.25rem 0;
+  }
+  #selectedFilesDisplay .file-label {
+    font-weight: bold;
+    color: #495057; /* Bootstrap secondary text color */
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm file-diff-card">
+        <div class="card-header">
+            <h2 class="card-title text-center mb-0">文件内容对比工具</h2>
+        </div>
+        <div class="card-body p-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <p class="text-muted text-center">
+                上传两个文本文件，此工具将高亮显示它们之间的差异。
+            </p>
+            <hr>
+
+            <form action="{{ url_for('file_diff.compare_files') }}" method="post" enctype="multipart/form-data" id="fileDiffForm">
+                {# CSRF token if using Flask-WTF #}
+                {# {{ form.csrf_token() }} #}
+
+                <div class="mb-3">
+                    <label for="fileUploads" class="form-label"><strong>选择两个文件进行对比:</strong></label>
+                    <div class="custom-file-upload-box" onclick="document.getElementById('fileUploadInput').click();">
+                        {# Note: input name is 'file1' and 'file2' in routes, but HTML multiple handles as a list.
+                           The backend route expects separate 'file1' and 'file2'.
+                           This needs two separate file inputs or JS to assign them.
+                           For simplicity, using two distinct inputs.
+                        #}
+                        <p class="text-muted mb-2"><i class="bi bi-files fs-2"></i></p>
+                        <p class="mb-1"><strong>点击此处选择文件</strong></p>
+                        <small class="text-muted">请分别选择“修改前”和“修改后”的文件。</small>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="file1Input" class="form-label">文件1 (修改前):</label>
+                        <input type="file" class="form-control form-control-lg" name="file1" id="file1Input" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="file2Input" class="form-label">文件2 (修改后):</label>
+                        <input type="file" class="form-control form-control-lg" name="file2" id="file2Input" required>
+                    </div>
+                </div>
+                <div id="selectedFilesDisplay" style="display:none;"></div>
+
+
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-arrow-left-right"></i> 对比文件内容
+                    </button>
+                </div>
+            </form>
+
+            {# The diff result will be shown on a new page/template: file_diff_result.html #}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const file1Input = document.getElementById('file1Input');
+    const file2Input = document.getElementById('file2Input');
+    const selectedFilesDisplay = document.getElementById('selectedFilesDisplay');
+    const form = document.getElementById('fileDiffForm');
+
+    function updateSelectedFilesDisplay() {
+        let content = '';
+        let filesSelected = 0;
+        if (file1Input.files.length > 0) {
+            content += '<div class="file-item"><span class="file-label">文件1 (修改前):</span> ' + file1Input.files[0].name + '</div>';
+            filesSelected++;
+        }
+        if (file2Input.files.length > 0) {
+            content += '<div class="file-item"><span class="file-label">文件2 (修改后):</span> ' + file2Input.files[0].name + '</div>';
+            filesSelected++;
+        }
+
+        if (filesSelected > 0) {
+            selectedFilesDisplay.innerHTML = content;
+            selectedFilesDisplay.style.display = 'block';
+        } else {
+            selectedFilesDisplay.style.display = 'none';
+        }
+        return filesSelected;
+    }
+
+    if(file1Input) file1Input.addEventListener('change', updateSelectedFilesDisplay);
+    if(file2Input) file2Input.addEventListener('change', updateSelectedFilesDisplay);
+
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            if (file1Input.files.length === 0 || file2Input.files.length === 0) {
+                alert('请确保已选择两个文件进行对比。');
+                event.preventDefault(); // Stop submission
+                return false;
+            }
+            // Optional: Add a loading indicator here if submission takes time
+            // document.getElementById('loadingIndicator').style.display = 'block';
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Flask Utilities Toolkit{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Favicon (optional, example) -->
+    {# <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}"> #}
+
+    <style>
+        body {
+            padding-top: 4.5rem; /* Adjust if navbar height changes */
+            background-color: #f4f7f6; /* Light background for the body */
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .navbar {
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+        }
+        .main-container { /* Replaces generic .container for main content block */
+            max-width: 95%; /* Keep it wide, but not full edge-to-edge by default */
+            margin-left: auto;
+            margin-right: auto;
+            flex-grow: 1; /* Allows main content to expand and push footer down */
+        }
+        .flash-messages-container {
+            position: fixed;
+            top: 5rem; /* Below navbar */
+            right: 1.5rem;
+            z-index: 1055; /* Above most elements */
+            min-width: 320px; /* Minimum width for messages */
+        }
+        .flash-message {
+            box-shadow: 0 .25rem .75rem rgba(0,0,0,.1);
+        }
+        /* Animation for flash messages */
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .flash-message.show { /* Bootstrap adds .show when alert is active */
+            animation: fadeInRight 0.3s ease-out forwards;
+        }
+        .card { /* General card styling */
+            border: none; /* Remove default card border if using shadows primarily */
+            border-radius: 0.5rem; /* Softer radius */
+        }
+        .card-header {
+            background-color: #e9ecef; /* Light grey header */
+            border-bottom: 1px solid #dee2e6;
+            font-size: 1.25rem; /* Consistent header size */
+        }
+        .footer {
+            background-color: #f8f9fa; /* Standard light background for footer */
+            border-top: 1px solid #dee2e6; /* Subtle top border */
+            padding: 1rem 0; /* Standard padding */
+            font-size: 0.9rem;
+        }
+        /* Custom CSS block for individual pages */
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container-fluid"> {# Use container-fluid for full-width navbar #}
+        <a class="navbar-brand" href="{{ url_for('app_root') }}">
+            {# <img src="{{ url_for('static', filename='logo_navbar.png') }}" alt="Logo" width="30" height="24" class="d-inline-block align-text-top"> #}
+            Flask Utilities
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbarNav"
+                aria-controls="mainNavbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNavbarNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle {% if request.blueprint == 'image_tools' %}active{% endif %}" href="#" id="imageToolsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-images"></i> Image Tools
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="imageToolsDropdown">
+                    <li><a class="dropdown-item {% if request.endpoint == 'image_tools.merge_two_images_get' %}active{% endif %}" href="{{ url_for('image_tools.merge_two_images_get') }}">Merge Two Images</a></li>
+                    <li><a class="dropdown-item {% if request.endpoint == 'image_tools.merge_multiple_images' %}active{% endif %}" href="{{ url_for('image_tools.merge_multiple_images') }}">Merge Multiple Images</a></li>
+                    <li><a class="dropdown-item {% if request.endpoint == 'image_tools.clean_images_route' %}active{% endif %}" href="{{ url_for('image_tools.clean_images_route') }}">Clean Images (to JPG)</a></li>
+                </ul>
+            </li>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle {% if request.blueprint in ['image_dedup', 'legacy_image_diff'] %}active{% endif %}" href="#" id="dedupDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-subtract"></i> Deduplication
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="dedupDropdown">
+                    <li><a class="dropdown-item {% if request.endpoint == 'image_dedup.index' %}active{% endif %}" href="{{ url_for('image_dedup.index') }}">Image Deduplication (New)</a></li>
+                    <li><a class="dropdown-item {% if request.endpoint == 'legacy_image_diff.index' %}active{% endif %}" href="{{ url_for('legacy_image_diff.index') }}">Legacy Image Diff</a></li>
+                </ul>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'file_diff.compare_files' %}active{% endif %}" href="{{ url_for('file_diff.compare_files') }}">
+                <i class="bi bi-file-earmark-diff"></i> File Compare {# Changed icon #}
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'uploader.upload_image' %}active{% endif %}" href="{{ url_for('uploader.upload_image') }}">
+                <i class="bi bi-cloud-arrow-up"></i> Image Uploader {# Changed icon #}
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'prompts.list_prompts' %}active{% endif %}" href="{{ url_for('prompts.list_prompts') }}">
+                <i class="bi bi-chat-left-text"></i> Prompts {# Changed icon #}
+              </a>
+            </li>
+          </ul>
+          <ul class="navbar-nav ms-auto">
+            {# External links from original base.html, if still relevant #}
+            <li class="nav-item">
+              <a class="nav-link" href="http://127.0.0.1:5070" target="_blank" rel="noopener noreferrer">Gist Snippets <i class="bi bi-box-arrow-up-right small"></i></a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="http://127.0.0.1:5060" target="_blank" rel="noopener noreferrer">Read Zhihu <i class="bi bi-box-arrow-up-right small"></i></a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Flash Messages Container -->
+    <div class="flash-messages-container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+          {# Ensure category is one of the standard bootstrap alert types #}
+          {% set alert_category = category if category in ['success', 'warning', 'danger', 'info', 'primary', 'secondary', 'light', 'dark'] else 'secondary' %}
+          <div class="alert alert-{{ alert_category }} alert-dismissible fade show flash-message" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    <!-- Main Content Block -->
+    <main role="main" class="main-container mt-4 mb-5">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">Flask Utilities Toolkit &copy; 2023. </span>
+            {# Example: Link to source or a personal site, ensure now() is available or use static year #}
+            {# <a href="https://github.com/yourusername/flask_blueprint_utils" target="_blank" rel="noopener noreferrer">View on GitHub</a> #}
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle (Popper.js included) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+
+    <script>
+      // Auto-hide flash messages after a delay
+      document.addEventListener('DOMContentLoaded', function () {
+        const flashMessages = document.querySelectorAll('.flash-message');
+        flashMessages.forEach(function (message) {
+          setTimeout(function () {
+            const alertInstance = bootstrap.Alert.getOrCreateInstance(message);
+            if (alertInstance) { // Check if instance exists (it should if element is there)
+                alertInstance.close();
+            }
+          }, 7000); // 7 seconds, adjust as needed
+        });
+      });
+    </script>
+
+    <!-- Custom JS block for individual pages -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

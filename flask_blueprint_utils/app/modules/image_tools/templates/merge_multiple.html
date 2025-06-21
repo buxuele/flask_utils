@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}多图拼接 - Flask 工具集{% endblock %}
+
+{% block extra_css %}
+<style>
+  .image-tool-card {
+    max-width: 800px;
+    margin: 2rem auto;
+  }
+  .custom-file-upload-container {
+    border: 2px dashed #ced4da;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+  }
+  .custom-file-upload-container:hover {
+    border-color: #0d6efd;
+    background-color: #f8f9fa;
+  }
+  .custom-file-upload-container input[type="file"] {
+    display: none;
+  }
+  #fileListPreviewMulti {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+  }
+  .preview-image-container {
+    margin-top: 2rem;
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+  }
+  .preview-image-container img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.25rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm image-tool-card">
+        <div class="card-header">
+            <h2 class="card-title text-center mb-0">多图拼接工具 (2-6 张)</h2>
+        </div>
+        <div class="card-body p-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('image_tools.merge_multiple_images') }}" method="post" enctype="multipart/form-data" id="mergeMultipleForm">
+                {# CSRF token if using Flask-WTF #}
+                {# {{ form.csrf_token() }} #}
+
+                <div class="mb-3">
+                    <label for="imageUploadMultiInput" class="form-label">选择 2 至 6 张图片进行拼接:</label>
+                    <div class="custom-file-upload-container" onclick="document.getElementById('imageUploadMultiInput').click();">
+                        <input type="file" name="images" id="imageUploadMultiInput" accept="image/*" required multiple>
+                        <i class="bi bi-images fs-1 text-muted"></i>
+                        <p class="mb-1">点击此处选择图片</p>
+                        <small class="text-muted">请选择 2 到 6 张图片。图片将按文件名自然排序后拼接。<br>支持格式：JPG, PNG, WEBP, GIF, AVIF etc.</small>
+                    </div>
+                    <div id="fileListPreviewMulti"></div>
+                </div>
+
+                {# Optional: Add checkbox for labels if your merge_multiple supports it #}
+                {# <div class="mb-3 form-check">
+                    <input class="form-check-input" type="checkbox" name="add_text_labels_multi" id="addTextLabelsMultiCheckbox" value="yes">
+                    <label class="form-check-label" for="addTextLabelsMultiCheckbox">
+                        在图片上添加序号或文件名 (如果支持)
+                    </label>
+                </div> #}
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                    <button type="submit" class="btn btn-primary btn-lg px-4">
+                        <i class="bi bi-grid-3x2-gap-fill"></i> 合并多张图片
+                    </button>
+                    {% if merged_image_data %}
+                    <a href="#" id="downloadMergedMultipleBtn" download="multi_merged_image.jpg" class="btn btn-success btn-lg px-4">
+                        <i class="bi bi-download"></i> 下载合并图片
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+
+            {% if merged_image_data %}
+            <div class="preview-image-container text-center mt-4">
+                <h5>合并结果预览:</h5>
+                <img src="data:image/jpeg;base64,{{ merged_image_data }}" alt="多图合并后的图片" id="mergedMultiplePreviewImage"/>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const imageUploadMultiInput = document.getElementById('imageUploadMultiInput');
+    const fileListPreviewMulti = document.getElementById('fileListPreviewMulti');
+
+    if (imageUploadMultiInput) {
+        imageUploadMultiInput.addEventListener('change', function () {
+            fileListPreviewMulti.innerHTML = ''; // Clear previous list
+            const files = this.files;
+            if (files.length >= 2 && files.length <= 6) {
+                // Sort files by name for preview consistency (server also sorts)
+                const sortedFiles = Array.from(files).sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+
+                fileListPreviewMulti.innerHTML = '<p class="text-success mb-1">已选择文件 (将按此顺序处理):</p><ul class="list-unstyled">';
+                for (let i = 0; i < sortedFiles.length; i++) {
+                    fileListPreviewMulti.innerHTML += '<li><i class="bi bi-file-earmark-image"></i> ' + (i+1) + '. ' + sortedFiles[i].name + '</li>';
+                }
+                fileListPreviewMulti.innerHTML += '</ul>';
+                this.closest('.custom-file-upload-container').classList.add('border-success');
+                this.closest('.custom-file-upload-container').classList.remove('border-danger');
+            } else if (files.length > 0) {
+                fileListPreviewMulti.innerHTML = '<p class="text-danger">错误：请选择 2 至 6 张图片。</p>';
+                this.closest('.custom-file-upload-container').classList.add('border-danger');
+                this.closest('.custom-file-upload-container').classList.remove('border-success');
+                this.value = ""; // Reset input
+            } else {
+                this.closest('.custom-file-upload-container').classList.remove('border-success', 'border-danger');
+            }
+        });
+    }
+
+    const downloadBtnMulti = document.getElementById('downloadMergedMultipleBtn');
+    const mergedImageMulti = document.getElementById('mergedMultiplePreviewImage');
+
+    if (downloadBtnMulti && mergedImageMulti) {
+        downloadBtnMulti.href = mergedImageMulti.src; // Set href for download
+
+        downloadBtnMulti.addEventListener('click', function (e) {
+            if (!this.href || this.href === '#') {
+                e.preventDefault();
+                alert('没有可下载的图片。');
+                return;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

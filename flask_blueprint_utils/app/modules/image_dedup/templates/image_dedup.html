@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}图片去重{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Add any specific styles for this page if needed */
+    .card-title {
+        font-size: 1.8rem; /* Slightly smaller than original if base.html has larger h2 */
+    }
+    .form-control-lg {
+        padding: .75rem 1.25rem; /* Adjust if needed */
+        font-size: 1.1rem; /* Adjust if needed */
+    }
+    .btn-lg {
+        padding: .75rem 1.5rem; /* Adjust if needed */
+        font-size: 1.15rem; /* Adjust if needed */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7"> {# Adjusted column width for better centering #}
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-4 p-md-5"> {# Responsive padding #}
+                    <h2 class="card-title text-center mb-4 fw-bold">图片去重</h2>
+
+                    {# Flash messages section #}
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    {# Form for uploading files and setting parameters #}
+                    {# Action URL updated to use blueprint routing #}
+                    <form id="dedupForm" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+
+                        <div class="mb-3">
+                            <label for="images" class="form-label">选择图片文件或ZIP压缩包:</label>
+                            <input type="file" class="form-control form-control-lg" id="files" name="images" multiple accept="image/*,.zip">
+                            <div class="form-text">您可以选择多个图片文件，或者一个包含图片的ZIP压缩包。</div>
+                        </div>
+
+                        {# Hidden input for folder upload if using JS to populate #}
+                        {# <input type="file" id="folderInput" name="folder" webkitdirectory directory multiple style="display:none;"> #}
+                        {# <button type="button" class="btn btn-secondary btn-sm mb-3" onclick="document.getElementById('folderInput').click();">或选择文件夹</button> #}
+
+
+                        <hr class="my-4">
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="method" class="form-label">相似度检测方法:</label>
+                                <select class="form-select form-select-lg" id="method" name="method">
+                                    <option value="hash" selected>感知哈希 (推荐)</option>
+                                    <option value="hist">直方图对比</option>
+                                    <option value="deep">深度学习特征 (较慢)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="threshold" class="form-label">相似度阈值: <span id="thresholdValue" class="fw-bold">95%</span></label>
+                                <input type="range" class="form-range" id="threshold" name="threshold" min="70" max="100" value="95">
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="button" id="processButton" class="btn btn-primary btn-lg">
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                                开始处理
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="uploadProgress" class="mt-3" style="display:none;">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                        <p class="text-center mt-1" id="uploadStatus">正在上传...</p>
+                    </div>
+
+                    <div id="fileCountInfo" class="mt-3 text-center text-muted" style="display:none;">
+                        服务器当前待处理图片数量: <span id="serverFileCount" class="fw-bold">0</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dedupForm = document.getElementById('dedupForm');
+    const filesInput = document.getElementById('files'); // Combined input for files and zip
+    const methodSelect = document.getElementById('method');
+    const thresholdSlider = document.getElementById('threshold');
+    const thresholdValueDisplay = document.getElementById('thresholdValue');
+    const processButton = document.getElementById('processButton');
+    const spinner = processButton.querySelector('.spinner-border');
+
+    const uploadProgressDiv = document.getElementById('uploadProgress');
+    const progressBar = uploadProgressDiv.querySelector('.progress-bar');
+    const uploadStatusP = document.getElementById('uploadStatus');
+
+    const fileCountInfoDiv = document.getElementById('fileCountInfo');
+    const serverFileCountSpan = document.getElementById('serverFileCount');
+
+    // Update threshold display
+    thresholdSlider.addEventListener('input', function() {
+        thresholdValueDisplay.textContent = this.value + '%';
+    });
+
+    // Function to update server file count
+    function updateServerFileCount() {
+        fetch("{{ url_for('image_dedup.file_count') }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.count !== undefined) {
+                    serverFileCountSpan.textContent = data.count;
+                    fileCountInfoDiv.style.display = 'block';
+                }
+            })
+            .catch(error => console.error('Error fetching file count:', error));
+    }
+    // Initial call
+    updateServerFileCount();
+
+
+    processButton.addEventListener('click', function() {
+        if (filesInput.files.length === 0) {
+            alert('请至少选择一个图片文件或ZIP压缩包。');
+            return;
+        }
+
+        spinner.style.display = 'inline-block';
+        processButton.disabled = true;
+        uploadStatusP.textContent = '正在上传...';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        uploadProgressDiv.style.display = 'block';
+
+        const formData = new FormData();
+        // Append files (images or zip)
+        for (let i = 0; i < filesInput.files.length; i++) {
+            formData.append('images', filesInput.files[i]); // Server expects 'images' for both
+        }
+
+        // AJAX request for uploading
+        const xhrUpload = new XMLHttpRequest();
+        xhrUpload.open('POST', "{{ url_for('image_dedup.upload_files') }}", true);
+
+        xhrUpload.upload.onprogress = function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = Math.round((event.loaded / event.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                progressBar.textContent = percentComplete + '%';
+            }
+        };
+
+        xhrUpload.onload = function() {
+            if (xhrUpload.status === 200) {
+                const uploadResponse = JSON.parse(xhrUpload.responseText);
+                // alert(uploadResponse.message); // Optional: notify about upload success
+                updateServerFileCount(); // Update count after upload
+
+                // Now, trigger processing
+                uploadStatusP.textContent = '上传完成，正在处理图片...';
+                progressBar.style.width = '100%'; // Visually indicate upload is done
+
+                const processData = {
+                    method: methodSelect.value,
+                    threshold: parseFloat(thresholdSlider.value) / 100.0 // Server expects 0.0-1.0
+                };
+
+                fetch("{{ url_for('image_dedup.process_duplicates') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Add CSRF token header if using Flask-WTF with CSRF protection
+                    },
+                    body: JSON.stringify(processData)
+                })
+                .then(response => response.json())
+                .then(processResponse => {
+                    if (processResponse.status === 'success') {
+                        // alert(processResponse.message); // Optional
+                        // Redirect to results page
+                        window.location.href = processResponse.redirect_url || "{{ url_for('image_dedup.show_results') }}";
+                    } else {
+                        alert('处理失败: ' + (processResponse.error || '未知错误'));
+                        resetButton();
+                    }
+                })
+                .catch(error => {
+                    console.error('Processing error:', error);
+                    alert('处理请求失败。');
+                    resetButton();
+                });
+
+            } else {
+                try {
+                    const errorResponse = JSON.parse(xhrUpload.responseText);
+                    alert('上传失败: ' + (errorResponse.error || xhrUpload.statusText));
+                } catch (e) {
+                    alert('上传失败: ' + xhrUpload.statusText);
+                }
+                resetButton();
+            }
+        };
+
+        xhrUpload.onerror = function() {
+            alert('上传发生网络错误。');
+            resetButton();
+        };
+
+        xhrUpload.send(formData);
+    });
+
+    function resetButton() {
+        spinner.style.display = 'none';
+        processButton.disabled = false;
+        uploadProgressDiv.style.display = 'none';
+    }
+
+});
+</script>
+{% endblock %}

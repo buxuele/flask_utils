@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Legacy Image Similarity Results{% endblock %}
+
+{% block extra_css %}
+<style>
+.results-card {
+    margin: 2rem auto;
+}
+.image-group-card-legacy {
+    border: 1px solid #ddd;
+    margin-bottom: 1.5rem;
+}
+.image-container-legacy {
+    position: relative;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    border-radius: 0.25rem;
+    border: 1px solid #eee; /* Light border for each image container */
+}
+.image-container-legacy img {
+    width: 100%;
+    height: 180px; /* Slightly smaller fixed height for legacy view */
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+    display: block;
+}
+.image-container-legacy img:hover {
+    transform: scale(1.05);
+}
+.image-info-legacy {
+    font-size: 0.75rem; /* Smaller font for filename */
+    text-align: center;
+    padding: 0.25rem;
+    background-color: rgba(248, 249, 250, 0.9);
+    border-top: 1px solid #eee;
+    word-break: break-all;
+    height: 40px; /* Fixed height for info, might need overflow handling */
+    overflow: hidden;
+}
+.group-header-legacy {
+    background-color: #f0f0f0; /* Slightly different header for legacy */
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid #ddd;
+}
+.group-title-legacy {
+    margin-bottom: 0;
+    font-size: 1.1rem; /* Slightly smaller title */
+}
+
+/* Modal styles (can be shared if base.html has a generic modal structure) */
+#legacyImagePreviewModal .modal-body {
+    background: #333;
+    padding: 0;
+}
+#legacyImagePreviewModal .modal-lg {
+    max-width: 75%; /* Adjust as needed */
+}
+#legacyModalImagePreview {
+    display: block;
+    max-width: 100%;
+    max-height: 75vh;
+    margin: auto;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm results-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="card-title mb-0">Legacy Image Similarity Results</h2>
+            <div>
+                <form id="removeLegacyDuplicatesForm" method="POST" action="{{ url_for('legacy_image_diff.remove_legacy_duplicates') }}" style="display: inline;">
+                    {# {{ form.csrf_token() }} #}
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-trash"></i> Remove Duplicates (Keeps First in Group)
+                    </button>
+                </form>
+                <a href="{{ url_for('legacy_image_diff.index') }}" class="btn btn-secondary btn-sm ms-2">
+                    <i class="bi bi-arrow-left-circle"></i> Back to Upload
+                </a>
+            </div>
+        </div>
+
+        <div class="card-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if image_groups %}
+                <p class="text-muted">Found {{ image_groups|length }} group(s) of similar images. (Total raw pairs: {{ raw_pairs_count }})</p>
+
+                {% for group in image_groups %}
+                <div class="card image-group-card-legacy">
+                    <div class="card-header group-header-legacy">
+                        <h5 class="group-title-legacy">Group {{ loop.index }} ({{ group|length }} similar images)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for image_filename in group %}
+                            <div class="col-6 col-md-4 col-lg-3 mb-3">
+                                <div class="image-container-legacy">
+                                    <img src="{{ url_for('legacy_image_diff.serve_legacy_thumbnail', filename=image_filename) }}"
+                                         data-original-src="{{ url_for('legacy_image_diff.serve_legacy_image', filename=image_filename) }}"
+                                         class="img-fluid"
+                                         alt="{{ image_filename }}"
+                                         onclick="showLegacyImagePreview(this.dataset.originalSrc, '{{ image_filename }}')">
+                                    <div class="image-info-legacy">{{ image_filename }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info mt-3">
+                    No groups of similar images found, or no similarity data available. (Total raw pairs: {{ raw_pairs_count }})
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Legacy Image Preview Modal -->
+<div class="modal fade" id="legacyImagePreviewModal" tabindex="-1" aria-labelledby="legacyImagePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="legacyImagePreviewModalLabel">Image Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" class="img-fluid" id="legacyModalImagePreview" alt="Image Preview">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let legacyImagePreviewModalInstance;
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('legacyImagePreviewModal')) {
+        legacyImagePreviewModalInstance = new bootstrap.Modal(document.getElementById('legacyImagePreviewModal'));
+    }
+
+    const removeForm = document.getElementById('removeLegacyDuplicatesForm');
+    if(removeForm){
+        removeForm.addEventListener('submit', function(event) {
+            if (!confirm('Are you sure you want to remove duplicate images for the legacy tool? This action cannot be undone.')) {
+                event.preventDefault();
+            }
+        });
+    }
+});
+
+function showLegacyImagePreview(src, title) {
+    if (legacyImagePreviewModalInstance) {
+        document.getElementById('legacyModalImagePreview').src = src;
+        document.getElementById('legacyImagePreviewModalLabel').textContent = title || 'Image Preview';
+        legacyImagePreviewModalInstance.show();
+    }
+}
+</script>
+{% endblock %}

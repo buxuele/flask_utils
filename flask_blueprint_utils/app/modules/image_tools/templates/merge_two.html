@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}双图拼接 - Flask 工具集{% endblock %}
+
+{% block extra_css %}
+<style>
+  .image-tool-card {
+    max-width: 800px; /* Or your preferred max width */
+    margin: 2rem auto;
+  }
+  .custom-file-upload-container { /* Renamed for clarity */
+    border: 2px dashed #ced4da; /* Bootstrap default border color */
+    padding: 2rem;
+    border-radius: 0.5rem; /* Standard Bootstrap radius */
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+  }
+  .custom-file-upload-container:hover {
+    border-color: #0d6efd; /* Bootstrap primary blue */
+    background-color: #f8f9fa; /* Light hover background */
+  }
+  .custom-file-upload-container input[type="file"] {
+    display: none; /* Hide the actual input */
+  }
+  #fileListPreview { /* For displaying selected file names */
+    margin-top: 1rem;
+    font-size: 0.9rem;
+  }
+  .preview-image-container { /* For the merged image */
+    margin-top: 2rem;
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+  }
+  .preview-image-container img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.25rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm image-tool-card">
+        <div class="card-header">
+            <h2 class="card-title text-center mb-0">双图横向拼接工具</h2>
+        </div>
+        <div class="card-body p-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('image_tools.merge_two_images_get') }}" method="post" enctype="multipart/form-data" id="mergeTwoForm">
+                {# CSRF token if using Flask-WTF #}
+                {# {{ form.csrf_token() }} #}
+
+                <div class="mb-3">
+                    <label for="imageUpload" class="form-label">选择两张图片进行拼接:</label>
+                    <div class="custom-file-upload-container" onclick="document.getElementById('imageUploadInput').click();">
+                        <input type="file" name="image1" id="imageUploadInput" accept="image/*" required multiple>
+                        <i class="bi bi-images fs-1 text-muted"></i>
+                        <p class="mb-1">点击此处选择图片</p>
+                        <small class="text-muted">请同时选择两张图片（例如：修改前和修改后的对比图）。<br>支持格式：JPG, PNG, WEBP, GIF, AVIF etc.</small>
+                    </div>
+                    <div id="fileListPreview"></div>
+                </div>
+
+                <div class="mb-3 form-check">
+                    <input class="form-check-input" type="checkbox" name="add_text" id="addTextCheckbox" value="yes">
+                    <label class="form-check-label" for="addTextCheckbox">
+                        在图片上添加 "修改前" / "修改后" 文字标签
+                    </label>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                    <button type="submit" class="btn btn-primary btn-lg px-4">
+                        <i class="bi bi-arrows-angle-expand"></i> 合并图片
+                    </button>
+                    {% if merged_image_data %}
+                    <a href="#" id="downloadMergedImageBtn" download="merged_image.jpg" class="btn btn-success btn-lg px-4">
+                        <i class="bi bi-download"></i> 下载合并图片
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+
+            {% if merged_image_data %}
+            <div class="preview-image-container text-center mt-4">
+                <h5>合并结果预览:</h5>
+                <img src="data:image/jpeg;base64,{{ merged_image_data }}" alt="合并后的图片" id="mergedPreviewImage"/>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const imageUploadInput = document.getElementById('imageUploadInput');
+    const fileListPreview = document.getElementById('fileListPreview');
+
+    if (imageUploadInput) {
+        imageUploadInput.addEventListener('change', function () {
+            fileListPreview.innerHTML = ''; // Clear previous list
+            if (this.files.length === 2) {
+                fileListPreview.innerHTML = '<p class="text-success mb-1">已选择文件:</p><ul class="list-unstyled">';
+                for (let i = 0; i < this.files.length; i++) {
+                    fileListPreview.innerHTML += '<li><i class="bi bi-file-earmark-image"></i> ' + this.files[i].name + '</li>';
+                }
+                fileListPreview.innerHTML += '</ul>';
+                // Visually indicate correct selection
+                this.closest('.custom-file-upload-container').classList.add('border-success');
+                this.closest('.custom-file-upload-container').classList.remove('border-danger');
+            } else if (this.files.length > 0) {
+                fileListPreview.innerHTML = '<p class="text-danger">错误：请不多不少，刚好选择两张图片。</p>';
+                this.closest('.custom-file-upload-container').classList.add('border-danger');
+                this.closest('.custom-file-upload-container').classList.remove('border-success');
+                this.value = ""; // Reset input if not exactly 2 files
+            } else {
+                 this.closest('.custom-file-upload-container').classList.remove('border-success', 'border-danger');
+            }
+        });
+    }
+
+    const downloadBtn = document.getElementById('downloadMergedImageBtn');
+    const mergedImage = document.getElementById('mergedPreviewImage');
+
+    if (downloadBtn && mergedImage) {
+        downloadBtn.href = mergedImage.src; // Set href for download
+
+        downloadBtn.addEventListener('click', function (e) {
+            if (!this.href || this.href === '#') {
+                e.preventDefault();
+                alert('没有可下载的图片。');
+                return;
+            }
+            // Optional: Add a success message for download start
+            // This is browser-dependent, actual download is handled by browser.
+        });
+    }
+});
+</script>
+{% endblock %}

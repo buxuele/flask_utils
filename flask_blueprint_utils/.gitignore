@@ -1,0 +1,45 @@
+# Environment
+.env
+venv/
+flask_venv/
+
+# IDE / Editor specific
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Instance folder (contains database, etc.)
+instance/
+
+# Uploads - if you decide to keep them in the project root and not track them
+# uploads/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Config files (if they contain sensitive info and are not templates)
+# config.py # If it holds actual secrets not managed by .env
+
+# Other
+*.log
+*.bak
+*.swp
+*.swo
+
+# Original project specific (can be removed if not relevant to new structure)
+# static/uploads/ # Covered by a more general 'uploads/' or if static is only for app assets
+*.json # If these are data files not meant for repo, like similar_pairs.json
+# gg.bat
+# start_repo.py
