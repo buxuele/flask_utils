@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Flask Utilities Home{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="px-4 py-5 my-5 text-center">
+        <img class="d-block mx-auto mb-4" src="{{ url_for('static', filename='logo.png') }}" alt="App Logo" width="92" height="77"> {# Assuming you add a logo.png to app/static #}
+        <h1 class="display-5 fw-bold">Flask Utilities Toolkit</h1>
+        <div class="col-lg-6 mx-auto">
+            <p class="lead mb-4">
+                Welcome to the Flask Utilities Toolkit! This application provides a collection of tools for image manipulation, file comparison, and more. Navigate using the menu above to access the different utilities.
+            </p>
+            <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                <a href="{{ url_for('image_tools.index') }}" class="btn btn-primary btn-lg px-4 gap-3">Image Tools</a>
+                <a href="{{ url_for('image_dedup.index') }}" class="btn btn-outline-secondary btn-lg px-4">Image Deduplication</a>
+                <a href="{{ url_for('prompts.list_prompts') }}" class="btn btn-outline-secondary btn-lg px-4">Prompts Manager</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
+        <div class="col d-flex align-items-start">
+            <div class="icon-square bg-light text-dark flex-shrink-0 me-3 p-2 rounded">
+                <i class="bi bi-images fs-2"></i>
+            </div>
+            <div>
+                <h2>Image Tools</h2>
+                <p>Merge images (two or multiple), clean images by converting to JPG, and other image processing utilities.</p>
+                <a href="{{ url_for('image_tools.index') }}" class="btn btn-primary">
+                    Go to Image Tools
+                </a>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div class="icon-square bg-light text-dark flex-shrink-0 me-3 p-2 rounded">
+                <i class="bi bi-subtract fs-2"></i>
+            </div>
+            <div>
+                <h2>Deduplication</h2>
+                <p>Find and manage similar or duplicate images using various comparison methods (hash, histogram, deep learning).</p>
+                <a href="{{ url_for('image_dedup.index') }}" class="btn btn-primary">
+                    Find Duplicates
+                </a>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div class="icon-square bg-light text-dark flex-shrink-0 me-3 p-2 rounded">
+                <i class="bi bi-card-text fs-2"></i>
+            </div>
+            <div>
+                <h2>Prompts</h2>
+                <p>Manage a list of frequently used text prompts with CRUD operations and reordering capabilities.</p>
+                <a href="{{ url_for('prompts.list_prompts') }}" class="btn btn-primary">
+                    Manage Prompts
+                </a>
+            </div>
+        </div>
+    </div>
+     <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
+        <div class="col d-flex align-items-start">
+            <div class="icon-square bg-light text-dark flex-shrink-0 me-3 p-2 rounded">
+                <i class="bi bi-file-diff fs-2"></i>
+            </div>
+            <div>
+                <h2>File Difference</h2>
+                <p>Compare two text files and view a visual representation of their differences.</p>
+                <a href="{{ url_for('file_diff.compare_files') }}" class="btn btn-primary">
+                    Compare Files
+                </a>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div class="icon-square bg-light text-dark flex-shrink-0 me-3 p-2 rounded">
+                <i class="bi bi-image-alt fs-2"></i>
+            </div>
+            <div>
+                <h2>Legacy Image Diff</h2>
+                <p>The older version of the image similarity and deduplication tool.</p>
+                <a href="{{ url_for('legacy_image_diff.index') }}" class="btn btn-primary">
+                    Legacy Tool
+                </a>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div class="icon-square bg-light text-dark flex-shrink-0 me-3 p-2 rounded">
+                <i class="bi bi-cloud-upload fs-2"></i>
+            </div>
+            <div>
+                <h2>Uploader</h2>
+                <p>A simple utility to upload images and get a shareable link.</p>
+                <a href="{{ url_for('uploader.upload_image') }}" class="btn btn-primary">
+                    Upload Image
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# Add any JS specific to the home page if needed #}
+{% endblock %}

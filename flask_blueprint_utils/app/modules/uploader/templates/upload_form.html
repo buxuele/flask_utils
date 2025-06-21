@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}图片上传工具 - Flask 工具集{% endblock %}
+
+{% block extra_css %}
+<style>
+  .uploader-card {
+    max-width: 700px;
+    margin: 2rem auto;
+  }
+  .file-upload-area { /* Renamed for clarity */
+    border: 3px dashed #adb5bd; /* Bootstrap secondary color, dashed */
+    padding: 2.5rem; /* More padding */
+    border-radius: 0.75rem; /* Slightly larger radius */
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease-in-out;
+    background-color: #f8f9fa; /* Light background */
+  }
+  .file-upload-area:hover, .file-upload-area.dragover {
+    border-color: #0d6efd; /* Bootstrap primary blue */
+    background-color: #e7f0ff; /* Lighter blue on hover/drag */
+  }
+  .file-upload-area input[type="file"] {
+    display: none; /* Hide the actual input */
+  }
+  .upload-icon {
+    font-size: 3rem; /* Larger icon */
+    color: #6c757d; /* Muted icon color */
+  }
+  .file-upload-area:hover .upload-icon {
+    color: #0d6efd;
+  }
+  .upload-result-box {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border: 1px solid #198754; /* Bootstrap success color for border */
+    background-color: #d1e7dd; /* Bootstrap success light background */
+    border-radius: 0.25rem;
+  }
+  .upload-result-box .url-display {
+    font-weight: bold;
+    word-break: break-all;
+  }
+  .upload-result-box img.preview {
+      max-width: 100%;
+      max-height: 250px; /* Limit preview height */
+      margin-top: 0.5rem;
+      border-radius: 0.25rem;
+      border: 1px solid #ccc;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm uploader-card">
+        <div class="card-header">
+            <h2 class="card-title text-center mb-0">通用图片上传</h2>
+        </div>
+        <div class="card-body p-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if image_url %}
+            <div class="upload-result-box text-center">
+                <p class="mb-2"><strong>文件 "{{ uploaded_filename }}" 上传成功!</strong></p>
+                <p class="mb-1">访问链接:</p>
+                <p class="url-display">
+                    <a href="{{ image_url }}" target="_blank">{{ image_url }}</a>
+                </p>
+                <button class="btn btn-outline-secondary btn-sm copy-url-btn" data-url="{{ image_url }}">
+                    <i class="bi bi-clipboard"></i> 复制链接
+                </button>
+                <div class="mt-2">
+                    <img src="{{ image_url }}" alt="Uploaded Image Preview" class="preview img-fluid">
+                </div>
+            </div>
+            <hr class="my-4">
+            <p class="text-center">要上传另一个文件，请使用下面的区域。</p>
+            {% endif %}
+
+            <form action="{{ url_for('uploader.upload_image') }}" method="post" enctype="multipart/form-data" id="uploadImageForm">
+                {# CSRF token if using Flask-WTF #}
+                {# {{ form.csrf_token() }} #}
+
+                <div class="file-upload-area" id="fileUploadDropArea"
+                     onclick="document.getElementById('imageFileInput').click();"
+                     ondragover="event.preventDefault(); this.classList.add('dragover');"
+                     ondragenter="event.preventDefault(); this.classList.add('dragover');"
+                     ondragleave="this.classList.remove('dragover');"
+                     ondrop="handleFileDrop(event)">
+                    <input type="file" name="image_file" id="imageFileInput" accept="image/*" required>
+                    <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                    <h5 class="mt-2 mb-1">点击此处或拖放图片上传</h5>
+                    <p class="text-muted small mb-0">支持 PNG, JPG, GIF, WEBP, SVG 等图片格式。</p>
+                </div>
+                <div id="fileNameDisplay" class="text-center mt-2 small text-muted"></div>
+
+                {# No explicit submit button, form submits on file selection/drop #}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const imageFileInput = document.getElementById('imageFileInput');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const uploadForm = document.getElementById('uploadImageForm');
+    const dropArea = document.getElementById('fileUploadDropArea');
+
+    if (imageFileInput) {
+        imageFileInput.addEventListener('change', function () {
+            if (this.files.length > 0) {
+                fileNameDisplay.textContent = '已选择文件: ' + this.files[0].name;
+                // Automatically submit the form on file selection
+                if(uploadForm) uploadForm.submit();
+            } else {
+                fileNameDisplay.textContent = '';
+            }
+        });
+    }
+
+    window.handleFileDrop = function(event) {
+        event.preventDefault();
+        dropArea.classList.remove('dragover');
+        if (event.dataTransfer.files.length > 0) {
+            imageFileInput.files = event.dataTransfer.files; // Assign dropped files to input
+            fileNameDisplay.textContent = '已选择文件: ' + imageFileInput.files[0].name;
+            if(uploadForm) uploadForm.submit(); // Submit form
+        }
+    }
+
+    // Copy URL button functionality
+    document.querySelectorAll('.copy-url-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const urlToCopy = this.dataset.url;
+            navigator.clipboard.writeText(urlToCopy).then(() => {
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="bi bi-check-lg"></i> 已复制!';
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-success');
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.classList.remove('btn-success');
+                    this.classList.add('btn-outline-secondary');
+                }, 2500);
+            }).catch(err => {
+                console.error('Failed to copy URL: ', err);
+                alert('复制链接失败。请手动复制。');
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

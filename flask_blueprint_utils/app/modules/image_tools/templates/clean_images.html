@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}图片清理工具 - Flask 工具集{% endblock %}
+
+{% block extra_css %}
+<style>
+  .image-tool-card {
+    max-width: 800px;
+    margin: 2rem auto;
+  }
+  .output-info-box {
+    background-color: #e9ecef; /* Light grey background */
+    border: 1px solid #ced4da;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    word-break: break-all; /* For long paths */
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm image-tool-card">
+        <div class="card-header">
+            <h2 class="card-title text-center mb-0">图片清理工具 (转为 JPG)</h2>
+        </div>
+        <div class="card-body p-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <p class="text-muted text-center">
+                此工具将指定文件夹中的图片或上传的图片统一转换为 JPG 格式，并存放到新的输出目录中。<br>
+                有助于解决部分图片（如 HEIC, AVIF 等特定格式）在 Windows 照片查看器中无法打开的问题。
+            </p>
+            <hr>
+
+            <form action="{{ url_for('image_tools.clean_images_route') }}" method="post" enctype="multipart/form-data" id="cleanImagesForm" class="needs-validation" novalidate>
+                {# CSRF token if using Flask-WTF #}
+                {# {{ form.csrf_token() }} #}
+
+                <div class="mb-3">
+                    <label for="folderPathInput" class="form-label"><strong>选项1: 输入服务器上的图片文件夹完整路径</strong> (可选)</label>
+                    <input type="text" class="form-control form-control-lg" id="folderPathInput" name="folder_path"
+                           placeholder="例如: C:\Users\YourName\Pictures\MyPhotos">
+                    <small class="form-text text-muted">
+                        注意：此路径是服务器文件系统路径。请确保应用有权限读取。留空则使用下方上传功能。
+                    </small>
+                </div>
+
+                <div class="text-center my-3 fw-bold">或</div>
+
+                <div class="mb-3">
+                    <label for="imageUploadCleanInput" class="form-label"><strong>选项2: 上传图片文件进行清理</strong> (可选)</label>
+                    <input type="file" class="form-control form-control-lg" id="imageUploadCleanInput" name="images" multiple accept="image/*">
+                    <small class="form-text text-muted">
+                        您可以选择多张图片。支持常见图片格式。
+                    </small>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-magic"></i> 开始清理并转换图片
+                    </button>
+                </div>
+            </form>
+
+            {% if output_directory %}
+            <div class="mt-4">
+                <div class="alert alert-success text-center">
+                    <h5 class="alert-heading"><i class="bi bi-check-circle-fill"></i> 处理完成！</h5>
+                    <p class="mb-1">转换后的 JPG 图片已保存到以下服务器目录:</p>
+                    <div class="output-info-box">
+                        <code>{{ output_directory }}</code>
+                    </div>
+                    <hr>
+                    <p class="mb-0">请从服务器访问此目录以获取文件。</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('cleanImagesForm');
+    const folderPathInput = document.getElementById('folderPathInput');
+    const imageUploadInput = document.getElementById('imageUploadCleanInput');
+
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            const folderPath = folderPathInput.value.trim();
+            const filesSelected = imageUploadInput.files.length > 0;
+
+            if (!folderPath && !filesSelected) {
+                event.preventDefault(); // Stop form submission
+                event.stopPropagation();
+                alert('请至少提供一个文件夹路径或上传一些图片文件。');
+                // Optionally, add Bootstrap validation classes to show errors
+                // folderPathInput.classList.add('is-invalid');
+                // imageUploadInput.classList.add('is-invalid');
+                return false; // Prevent submission
+            }
+            // If one is provided, remove potential error states from the other
+            if (folderPath) imageUploadInput.classList.remove('is-invalid');
+            if (filesSelected) folderPathInput.classList.remove('is-invalid');
+
+            form.classList.add('was-validated'); // Bootstrap validation styling
+        });
+    }
+});
+</script>
+{% endblock %}

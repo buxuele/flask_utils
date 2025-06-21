@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Legacy Image Similarity Finder{% endblock %}
+
+{% block extra_css %}
+<style>
+  .legacy-diff-card {
+    max-width: 700px;
+    margin: 2rem auto;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm legacy-diff-card">
+        <div class="card-header">
+            <h2 class="card-title text-center mb-0">Legacy Image Similarity Finder</h2>
+        </div>
+        <div class="card-body p-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <p class="text-muted text-center">
+                Upload multiple images to find pairs of visually similar images using various methods.
+                This is the older version of the image comparison tool.
+            </p>
+            <hr>
+
+            <form action="{{ url_for('legacy_image_diff.process_legacy_diff') }}" method="post" enctype="multipart/form-data">
+                {# CSRF token if using Flask-WTF #}
+                {# {{ form.csrf_token() }} #}
+
+                <div class="mb-3">
+                    <label for="images" class="form-label"><strong>Select Images to Compare:</strong></label>
+                    <input type="file" class="form-control form-control-lg" name="images" id="images" multiple required
+                           accept="image/png, image/jpeg, image/gif, image/webp, image/bmp">
+                    <small class="form-text text-muted">You can select multiple image files.</small>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="method" class="form-label">Comparison Method:</label>
+                        <select class="form-select form-select-lg" id="method" name="method">
+                            <option value="hash" selected>Perceptual Hash (pHash)</option>
+                            <option value="hist">Color Histogram</option>
+                            <option value="deep">Deep Learning Features (Slowest)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="threshold" class="form-label">Similarity Threshold: <span id="thresholdValue" class="fw-bold">95%</span></label>
+                        <input type="range" class="form-range" id="threshold" name="threshold" min="70" max="100" value="95">
+                        <small class="form-text text-muted">Higher means more similar.</small>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-search"></i> Find Similar Images
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const thresholdSlider = document.getElementById('threshold');
+    const thresholdValueDisplay = document.getElementById('thresholdValue');
+
+    if (thresholdSlider && thresholdValueDisplay) {
+        thresholdSlider.addEventListener('input', function () {
+            thresholdValueDisplay.textContent = this.value + '%';
+        });
+    }
+
+    // Basic form validation feedback for file input (optional)
+    const imagesInput = document.getElementById('images');
+    if (imagesInput) {
+        imagesInput.addEventListener('change', function() {
+            if (this.files.length === 0) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

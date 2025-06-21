@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}相似图片结果{% endblock %}
+
+{% block extra_css %}
+<style>
+.image-group-card {
+    border: 1px solid #ddd;
+    margin-bottom: 1.5rem;
+}
+
+.image-container {
+    position: relative;
+    margin-bottom: 1rem;
+    overflow: hidden; /* Ensures border radius is respected by image */
+    border-radius: 0.25rem;
+}
+
+.image-container img {
+    width: 100%;
+    /* Maintain aspect ratio, let height be auto or set a fixed height */
+    height: 200px; /* Example fixed height */
+    object-fit: cover; /* Cover ensures the image fills the space, might crop */
+    /* object-fit: contain; */ /* Contain ensures whole image is visible, might leave empty space */
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+    display: block; /* Remove extra space below image */
+}
+
+.image-container img:hover {
+    transform: scale(1.05);
+}
+
+.image-info {
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 0.25rem;
+    background-color: rgba(248, 249, 250, 0.8); /* Light background for text */
+    border-top: 1px solid #eee;
+    word-break: break-all; /* Break long filenames */
+}
+
+.similarity-score { /* If you display similarity for pairs */
+    font-weight: bold;
+    color: #007bff;
+}
+
+#imagePreviewModal .modal-body {
+    background: #333; /* Darker background for better image focus */
+    padding: 0; /* Remove padding if image fills it */
+}
+#imagePreviewModal .modal-lg {
+    max-width: 80%; /* Or a fixed pixel value */
+}
+
+#modalImagePreview {
+    display: block;
+    max-width: 100%;
+    max-height: 80vh; /* Limit height to viewport height */
+    margin: auto; /* Center image in modal */
+}
+
+.modal-header .btn-close { /* Style close button if needed */
+    filter: invert(1) grayscale(100%) brightness(200%); /* Makes it white for dark backgrounds */
+}
+
+.group-header {
+    background-color: #f8f9fa;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid #ddd;
+}
+.group-title {
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>相似图片结果</h2>
+        <div>
+            {# Action URL updated for blueprint #}
+            <form id="removeDuplicatesForm" method="POST" action="{{ url_for('image_dedup.remove_duplicates_action') }}" style="display: inline;">
+                {# Add CSRF token here if using Flask-WTF #}
+                {# {{ form.csrf_token }} #}
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> 移除重复图片 (保留每组第一张)
+                </button>
+            </form>
+            <a href="{{ url_for('image_dedup.index') }}" class="btn btn-secondary ms-2">
+                <i class="bi bi-arrow-left-circle"></i> 返回上传
+            </a>
+        </div>
+    </div>
+
+    {# Flash messages section #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if image_groups %}
+        <p class="text-muted">共找到 {{ image_groups|length }} 组相似图片。在每组中，建议保留一张图片，其余的可视为重复项并移除。</p>
+
+        {% for group in image_groups %}
+        <div class="card image-group-card">
+            <div class="card-header group-header">
+                <h5 class="group-title">相似图片组 {{ loop.index }} ({{ group|length }} 张图片)</h5>
+                {# You could add similarity scores here if they are group-wide or pair-wise #}
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for image_filename in group %}
+                    <div class="col-6 col-md-4 col-lg-3 mb-3"> {# Adjust column classes for responsiveness #}
+                        <div class="image-container border rounded">
+                             {# URLs updated for blueprint's static serving routes #}
+                            <img src="{{ url_for('image_dedup.serve_thumbnail_image', filename=image_filename) }}"
+                                 data-original-src="{{ url_for('image_dedup.serve_original_image', filename=image_filename) }}"
+                                 class="img-fluid"
+                                 alt="{{ image_filename }}"
+                                 onclick="showImagePreview(this.dataset.originalSrc, '{{ image_filename }}')">
+                            <div class="image-info">{{ image_filename }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+    {% elif similar_pairs_raw %} {# Fallback for raw pairs if grouping failed or is not preferred #}
+        <div class="alert alert-warning">
+            <p>显示原始相似图片对（未分组）。</p>
+        </div>
+        <div class="row">
+            {% for pair in similar_pairs_raw %}
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">相似度: <span class="similarity-score">{{ "%.2f"|format(pair.similarity * 100) }}%</span></h5>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="image-container border rounded">
+                                        <img src="{{ url_for('image_dedup.serve_thumbnail_image', filename=pair.image1) }}"
+                                             data-original-src="{{ url_for('image_dedup.serve_original_image', filename=pair.image1) }}"
+                                             class="img-fluid"
+                                             onclick="showImagePreview(this.dataset.originalSrc, '{{ pair.image1 }}')"
+                                             alt="Image 1: {{ pair.image1 }}">
+                                        <div class="image-info">{{ pair.image1 }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="image-container border rounded">
+                                        <img src="{{ url_for('image_dedup.serve_thumbnail_image', filename=pair.image2) }}"
+                                             data-original-src="{{ url_for('image_dedup.serve_original_image', filename=pair.image2) }}"
+                                             class="img-fluid"
+                                             onclick="showImagePreview(this.dataset.originalSrc, '{{ pair.image2 }}')"
+                                             alt="Image 2: {{ pair.image2 }}">
+                                        <div class="image-info">{{ pair.image2 }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            没有找到相似的图片，或者没有相似度数据可供显示。
+        </div>
+    {% endif %}
+</div>
+
+<!-- Image Preview Modal -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-labelledby="imagePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imagePreviewModalLabel">图片预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" class="img-fluid" id="modalImagePreview" alt="Image Preview">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let imagePreviewModalInstance;
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('imagePreviewModal')) {
+        imagePreviewModalInstance = new bootstrap.Modal(document.getElementById('imagePreviewModal'));
+    }
+
+    const removeForm = document.getElementById('removeDuplicatesForm');
+    if(removeForm){
+        removeForm.addEventListener('submit', function(event) {
+            if (!confirm('确定要移除重复图片吗？此操作将保留每组中的第一张图片，并移动其余图片。此操作不可撤销。')) {
+                event.preventDefault();
+            }
+        });
+    }
+});
+
+function showImagePreview(src, title) {
+    if (imagePreviewModalInstance) {
+        document.getElementById('modalImagePreview').src = src;
+        document.getElementById('imagePreviewModalLabel').textContent = title || '图片预览';
+        imagePreviewModalInstance.show();
+    }
+}
+</script>
+{% endblock %}
