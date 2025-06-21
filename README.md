@@ -1,5 +1,11 @@
-# flask 小工具
+### flask 小工具
+
+项目地址：
+
+https://github.com/buxuele/flask_utils
 
 
-![merge 2 images](imgs/a1.png)
-![my prompt](imgs/a2.png)
+示例图片
+
+![merge 2 images](效果图/a1.png)
+![my prompt](效果图/a2.png)
