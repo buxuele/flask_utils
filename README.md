@@ -7,5 +7,7 @@ https://github.com/buxuele/flask_utils
 
 示例图片
 
-![merge 2 images](效果图/a1.png)
-![my prompt](效果图/a2.png)
+![merge 2 images](效果图/a1.jpg)
+![my prompt](效果图/a2.jpg)
+
+
