@@ -91,6 +91,22 @@
                 >图片上传</a
               >
             </li>
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.endpoint == 'clean_images' %}active{% endif %}"
+                href="/clean_images"
+                >图片清理</a
+              >
+            </li>
+
+            <!-- <li class="nav-item">
+              <a
+                class="nav-link {% if request.endpoint == 'img_duplicate' %}active{% endif %}"
+                href="/img_duplicate"
+                >图片去重</a
+              >
+            </li> -->
+
           </ul>
           <ul class="navbar-nav ms-auto">
             <li class="nav-item">
@@ -100,6 +116,25 @@
                 >常用提示词</a
               >
             </li>
+
+
+            <!-- gist 我打算给的端口是 5070 -->
+            <li class="nav-item">
+              <a class="nav-link" href="http://127.0.0.1:5070" target="_blank">gist 代码片段</a>
+            </li>
+
+            <!-- 阅读知乎 app 端口号是 5060 -->
+            <li class="nav-item">
+              <a class="nav-link" href="http://127.0.0.1:5060" target="_blank">阅读知乎</a>
+            </li>
+
+            <!-- 其他新增的 app 可以放在这里， 记得加上 http:// xxx -->
+            <li class="nav-item">
+              <a class="nav-link" href="#" target="_blank">new_app1</a>
+            </li>
+
+
+
           </ul>
         </div>
       </div>

@@ -1,4 +1,3 @@
-@echo off                  
 :: 显示当前的 Git 状态
 git status
 
@@ -14,7 +13,7 @@ git add .
 git commit -m "%message%"
 
 :: 将本地的提交推送到远程仓库
-git push -u origin main
+@REM git push -u origin main
 
 :: 显示执行 git push 后的 Git 状态
 git status

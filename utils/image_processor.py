@@ -3,6 +3,12 @@ import re
 from typing import List, Tuple
 import io
 import base64
+import os
+from pathlib import Path
+import numpy as np
+from .hash_processor import HashProcessor
+from .hist_processor import HistProcessor
+from .deep_processor import DeepProcessor
 
 def natural_sort_key(s: str) -> List[str]:
     """Sort strings containing numbers in natural order."""
@@ -194,3 +200,129 @@ def process_images(files: List[Tuple[str, any]]) -> str:
     result = base64.b64encode(img_bytes.getvalue()).decode()
     print("图片处理完成")
     return result
+
+class ImageProcessor:
+    def __init__(self):
+        self.hash_processor = HashProcessor()
+        self.hist_processor = HistProcessor()
+        self.deep_processor = DeepProcessor()
+        
+        # 创建必要的目录
+        self.images_dir = Path('static/uploads/image_diff')
+        self.thumbnails_dir = Path('static/uploads/image_diff/thumbnails')
+        self.images_dir.mkdir(parents=True, exist_ok=True)
+        self.thumbnails_dir.mkdir(parents=True, exist_ok=True)
+    
+    def create_thumbnails(self):
+        """为所有图片创建缩略图"""
+        for img_path in self.images_dir.glob('*.jpg'):
+            thumb_path = self.thumbnails_dir / img_path.name
+            if not thumb_path.exists():
+                try:
+                    with Image.open(img_path) as img:
+                        # 计算缩略图尺寸，保持宽高比
+                        max_size = (200, 200)
+                        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                        img.save(thumb_path, 'JPEG', quality=85)
+                except Exception as e:
+                    print(f"创建缩略图失败 {img_path}: {e}")
+    
+    def find_similar_images(self, similarity_threshold=0.95, method='hash'):
+        """查找相似图片"""
+        # 选择处理器
+        if method == 'hash':
+            processor = self.hash_processor
+        elif method == 'hist':
+            processor = self.hist_processor
+        elif method == 'deep':
+            processor = self.deep_processor
+        else:
+            raise ValueError(f"不支持的方法: {method}")
+        
+        # 获取所有图片
+        image_files = list(self.images_dir.glob('*.jpg'))
+        if not image_files:
+            return []
+        
+        # 计算图片特征
+        features = {}
+        for img_path in image_files:
+            try:
+                features[img_path.name] = processor.compute_feature(img_path)
+            except Exception as e:
+                print(f"处理图片失败 {img_path}: {e}")
+                continue
+        
+        # 查找相似图片对
+        similar_pairs = []
+        processed = set()
+        
+        for img1_name, feat1 in features.items():
+            if img1_name in processed:
+                continue
+                
+            for img2_name, feat2 in features.items():
+                if img1_name == img2_name or img2_name in processed:
+                    continue
+                
+                similarity = processor.compute_similarity(feat1, feat2)
+                if similarity >= similarity_threshold:
+                    similar_pairs.append({
+                        'image1': img1_name,
+                        'image2': img2_name,
+                        'similarity': float(similarity)
+                    })
+                    processed.add(img2_name)
+            
+            processed.add(img1_name)
+        
+        return similar_pairs
+    
+    def save_uploaded_files(self, files):
+        """保存上传的文件"""
+        saved_files = []
+        for file in files:
+            if file and file.filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                filename = os.path.basename(file.filename)
+                file_path = self.images_dir / filename
+                file.save(file_path)
+                saved_files.append(filename)
+        return saved_files
+    
+    def remove_duplicates(self, similar_pairs):
+        """移除重复图片"""
+        # 创建重复图片目录
+        dup_dir = self.images_dir / 'duplicates'
+        dup_dir.mkdir(exist_ok=True)
+        
+        # 将相似图片对分组
+        groups = []
+        used_images = set()
+        moved_count = 0
+        
+        for pair in similar_pairs:
+            if pair['image1'] in used_images or pair['image2'] in used_images:
+                continue
+                
+            group = [pair['image1'], pair['image2']]
+            used_images.add(pair['image1'])
+            used_images.add(pair['image2'])
+            
+            # 查找与当前组中图片相似的其他图片
+            for other_pair in similar_pairs:
+                if other_pair['image1'] in group and other_pair['image2'] not in used_images:
+                    group.append(other_pair['image2'])
+                    used_images.add(other_pair['image2'])
+                elif other_pair['image2'] in group and other_pair['image1'] not in used_images:
+                    group.append(other_pair['image1'])
+                    used_images.add(other_pair['image1'])
+            
+            # 保留第一张图片，移动其他图片
+            for img in group[1:]:
+                src_path = self.images_dir / img
+                dst_path = dup_dir / img
+                if src_path.exists():
+                    src_path.rename(dst_path)
+                    moved_count += 1
+        
+        return moved_count

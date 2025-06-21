@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}图片清理工具{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+        <div class="card shadow-lg border-0">
+            <div class="card-body p-5">
+                <h2 class="card-title text-center mb-4 fw-bold" style="font-size:2.2rem;">图片清理工具</h2>
+                <form method="POST" action="{{ url_for('clean_images') }}" class="needs-validation" novalidate enctype="multipart/form-data">
+                    <!-- 方法1：文件夹路径 -->
+                    <div class="mb-4">
+                        <input type="text" class="form-control form-control-lg" id="folder_path" name="folder_path" 
+                               placeholder="输入图片文件夹路径（如 C:\Users\Administrator\Pictures，可选）">
+                    </div>
+                    <div class="text-center mb-3 text-muted">或</div>
+                    <!-- 方法2：文件上传 -->
+                    <div class="mb-4">
+                        <input type="file" class="form-control form-control-lg" id="images" name="images" multiple accept="image/*">
+                        <div class="form-text text-center">可上传多张图片（可选）</div>
+                    </div>
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" style="font-size:1.3rem;">开始处理</button>
+                    </div>
+                </form>
+                {% if output_dir %}
+                <div class="mt-4">
+                    <div class="alert alert-success text-center">
+                        <div class="fw-bold">处理完成！</div>
+                        <div style="word-break:break-all;">输出目录：<code>{{ output_dir }}</code></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 表单校验，至少有一种方式
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function(event) {
+        const folderPath = document.getElementById('folder_path').value.trim();
+        const fileInput = document.getElementById('images');
+        if (!folderPath && fileInput.files.length === 0) {
+            event.preventDefault();
+            event.stopPropagation();
+            alert('请至少输入文件夹路径或上传图片文件');
+            return;
+        }
+        form.classList.add('was-validated');
+    });
+});
+</script>
+{% endblock %} 

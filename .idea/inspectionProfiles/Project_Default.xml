@@ -8,7 +8,7 @@
     <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="ignoredPackages">
         <value>
-          <list size="51">
+          <list size="68">
             <item index="0" class="java.lang.String" itemvalue="yacs" />
             <item index="1" class="java.lang.String" itemvalue="editdistance" />
             <item index="2" class="java.lang.String" itemvalue="shapely" />
@@ -60,6 +60,23 @@
             <item index="48" class="java.lang.String" itemvalue="omegaconf" />
             <item index="49" class="java.lang.String" itemvalue="tensorboard" />
             <item index="50" class="java.lang.String" itemvalue="tensorboard-data-server" />
+            <item index="51" class="java.lang.String" itemvalue="beautifulsoup4" />
+            <item index="52" class="java.lang.String" itemvalue="curlconverter" />
+            <item index="53" class="java.lang.String" itemvalue="selenium" />
+            <item index="54" class="java.lang.String" itemvalue="fake-useragent" />
+            <item index="55" class="java.lang.String" itemvalue="lxml" />
+            <item index="56" class="java.lang.String" itemvalue="aiohttp" />
+            <item index="57" class="java.lang.String" itemvalue="scrapy" />
+            <item index="58" class="java.lang.String" itemvalue="mitmproxy" />
+            <item index="59" class="java.lang.String" itemvalue="pymongo" />
+            <item index="60" class="java.lang.String" itemvalue="nbclassic" />
+            <item index="61" class="java.lang.String" itemvalue="python-magic" />
+            <item index="62" class="java.lang.String" itemvalue="chardet" />
+            <item index="63" class="java.lang.String" itemvalue="Werkzeug" />
+            <item index="64" class="java.lang.String" itemvalue="SQLAlchemy" />
+            <item index="65" class="java.lang.String" itemvalue="Flask-SQLAlchemy" />
+            <item index="66" class="java.lang.String" itemvalue="Flask" />
+            <item index="67" class="java.lang.String" itemvalue="Pillow" />
           </list>
         </value>
       </option>

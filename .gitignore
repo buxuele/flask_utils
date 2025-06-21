@@ -1,29 +1,21 @@
-
 # 文件夹
 .idea/
 instance/
-venv/
-nice_venv/
 __pycache__/
-
+flask_venv/
 
 static/uploads/
-
 
 # 一些关键文件！！
 *.json
 *.bak
 .env
 
+*.pyc
+*.pyw
+*.bat
 
-new_repo.bat
 start_repo.py
 gg.bat
 
-
-我的要求-提示词.md
-过程记录.md
-new_新提示词.md
-copilot_感受和建议.md
-提示词.md
 
