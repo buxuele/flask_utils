@@ -8,7 +8,6 @@ flask_venv/     # 虚拟环境，环境依赖隔离
 static/uploads/ # 用户上传文件，体积大且动态生成
 
 .env   
-
 *.pyw           # Python GUI脚本，运行时生成
 
 start_repo.py   # 启动脚本，可能是临时或本地用
