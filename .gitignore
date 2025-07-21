@@ -12,3 +12,6 @@ static/uploads/ # 用户上传文件，体积大且动态生成
 
 start_repo.py   # 启动脚本，可能是临时或本地用
 gg.bat          # 自定义批处理，项目无关
+
+cat_code.py
+my_files.txt

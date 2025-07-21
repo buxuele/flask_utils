@@ -11,7 +11,6 @@ import difflib
 from utils.image_processor import process_images
 from config import Config
 
-
 app = Flask(__name__)
 
 # Apply configurations from Config class
