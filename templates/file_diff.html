@@ -1,0 +1,216 @@
+{% extends "base.html" %} {% block title %}文件对比 | Flask 工具集{% endblock %}
+{% block extra_css %}
+<style>
+  .custom-file-upload {
+    border: 2px dashed rgba(0, 0, 0, 0.2);
+    display: inline-block;
+    padding: 2rem;
+    cursor: pointer;
+    border-radius: 1rem;
+    transition: all 0.3s ease;
+  }
+
+  .custom-file-upload:hover {
+    border-color: #0d6efd;
+    background: rgba(13, 110, 253, 0.1);
+  }
+
+  .diff-container {
+    font-family: "Consolas", "Microsoft YaHei Mono", monospace;
+    background: #f8f9fa;
+    border-radius: 1rem;
+    margin-top: 1.5rem;
+    overflow: auto;
+  }
+
+  .diff {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .diff td {
+    padding: 0.3rem 0.6rem;
+    white-space: pre;
+    font-family: monospace;
+  }
+
+  .diff_header {
+    background-color: #e9ecef;
+    color: #495057;
+    text-align: right;
+    padding: 0.3rem 0.6rem;
+    border-right: 1px solid #dee2e6;
+    user-select: none;
+  }
+
+  .diff_next {
+    background-color: #f8f9fa;
+    text-align: center;
+    border-right: 1px solid #dee2e6;
+  }
+
+  .diff_add {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  .diff_chg {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+
+  .diff_sub {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+
+  .file-list {
+    background: #fff;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+
+  .loading.active {
+    display: flex;
+  }
+
+  .error-message {
+    display: none;
+    color: #dc3545;
+    margin-top: 1rem;
+    text-align: center;
+  }
+
+  .error-message.active {
+    display: block;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10">
+    <div class="card">
+      <div class="card-body">
+        <form
+          id="diffForm"
+          action="/file_diff"
+          method="post"
+          enctype="multipart/form-data"
+        >
+          <div class="text-center mb-4">
+            <label class="custom-file-upload d-block mx-auto">
+              <input
+                type="file"
+                name="files"
+                class="d-none"
+                required
+                multiple
+              />
+              <div class="h4 mb-3">选择文件</div>
+              <div class="text-muted mb-3">请选择两个要对比的文件</div>
+              <div class="small text-muted">
+                左侧为修改前的文件，右侧为修改后的文件
+              </div>
+              <div id="fileList" class="file-list mt-3 text-start"></div>
+            </label>
+          </div>
+
+          <div class="text-center">
+            <button type="submit" class="btn btn-primary btn-lg px-4">
+              对比文件
+            </button>
+          </div>
+        </form>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        {% if diff_content %}
+        <div class="diff-container">{{ diff_content|safe }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="loading" class="loading">
+  <div class="spinner-border text-primary" role="status">
+    <span class="visually-hidden">正在比对...</span>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  document
+    .querySelector('input[type="file"]')
+    .addEventListener("change", function () {
+      const fileList = document.getElementById("fileList");
+      const errorMessage = document.getElementById("errorMessage");
+      fileList.innerHTML = "";
+      errorMessage.classList.remove("active");
+
+      if (this.files.length === 2) {
+        Array.from(this.files).forEach((file, i) => {
+          const fileInfo = document.createElement("div");
+          fileInfo.className = "mb-2";
+          fileInfo.innerHTML = `📄 ${i === 0 ? "修改前" : "修改后"}: ${
+            file.name
+          }`;
+          fileList.appendChild(fileInfo);
+        });
+
+        this.closest(".custom-file-upload").classList.add("border-primary");
+      } else {
+        const errorMsg = "请选择两个文件";
+        fileList.innerHTML = `<div class="text-danger">${errorMsg}</div>`;
+        this.closest(".custom-file-upload").classList.remove("border-primary");
+        this.value = "";
+      }
+    });
+
+  document.getElementById("diffForm").addEventListener("submit", function (e) {
+    const loading = document.getElementById("loading");
+    const errorMessage = document.getElementById("errorMessage");
+    loading.classList.add("active");
+    errorMessage.classList.remove("active");
+
+    e.preventDefault();
+
+    fetch(this.action, {
+      method: "POST",
+      body: new FormData(this),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response.text().then((text) => {
+            throw new Error(text);
+          });
+        }
+        return response.text();
+      })
+      .then((html) => {
+        document.open();
+        document.write(html);
+        document.close();
+      })
+      .catch((error) => {
+        loading.classList.remove("active");
+        errorMessage.textContent = error.message;
+        errorMessage.classList.add("active");
+      });
+  });
+</script>
+{% endblock %}

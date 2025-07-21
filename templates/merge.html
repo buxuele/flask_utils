@@ -1,0 +1,160 @@
+{% extends "base.html" %} {% block title %}双图拼接 - Flask 工具集{% endblock %}
+{% block extra_css %}
+<style>
+  .custom-file-upload {
+    border: 2px dashed rgba(0, 0, 0, 0.2);
+    display: inline-block;
+    padding: 2rem;
+    cursor: pointer;
+    border-radius: 1rem;
+    transition: all 0.3s ease;
+  }
+
+  .custom-file-upload:hover {
+    border-color: #0d6efd;
+    background: rgba(13, 110, 253, 0.1);
+  }
+
+  .preview-container {
+    background: #f8f9fa;
+    border-radius: 1rem;
+    padding: 1rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <form
+          action="/merge"
+          method="post"
+          enctype="multipart/form-data"
+          id="mergeForm"
+        >
+          <div class="text-center mb-4">
+            <label class="custom-file-upload d-block mx-auto">
+              <input
+                type="file"
+                name="image1"
+                class="d-none"
+                accept="image/*"
+                required
+                multiple
+              />
+              <div class="h4 mb-3">选择图片</div>
+              <div class="text-muted mb-3">
+                请同时选择两张图片（修改前和修改后的图片）
+              </div>
+              <div class="small text-muted">支持格式：JPG、PNG</div>
+              <div id="fileList" class="mt-3 text-start"></div>
+            </label>
+          </div>
+          <div class="text-center">
+            <div class="form-check d-inline-block me-3">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                name="add_text"
+                id="addText"
+              />
+              <label class="form-check-label" for="addText">
+                添加对比文字
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg px-4">
+              合并图片
+            </button>
+            <a
+              href="#"
+              id="downloadBtn"
+              download="merged_image.jpg"
+              data-merged="{{ 'true' if merged_image else 'false' }}"
+              class="btn btn-success btn-lg px-4 ms-2 {% if not merged_image %}disabled{% endif %}"
+            >
+              下载图片
+            </a>
+          </div>
+        </form>
+        {% if merged_image %}
+        <div class="preview-container mt-4" id="previewContainer">
+          <img
+            src="data:image/jpeg;base64,{{ merged_image }}"
+            alt="合并后的图片"
+            class="img-fluid rounded"
+            id="mergedImage"
+          />
+        </div>
+        <script>
+          // 设置下载按钮的URL
+          const downloadBtn = document.getElementById("downloadBtn");
+          downloadBtn.href = document.getElementById("mergedImage").src;
+          downloadBtn.classList.remove("disabled");
+        </script>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // 文件选择处理
+  document
+    .querySelector('input[type="file"]')
+    .addEventListener("change", function () {
+      const fileList = document.getElementById("fileList");
+      fileList.innerHTML = "";
+
+      if (this.files.length === 2) {
+        for (let i = 0; i < this.files.length; i++) {
+          const file = this.files[i];
+          const fileInfo = document.createElement("div");
+          fileInfo.className = "mb-2";
+          fileInfo.innerHTML = `📁 ${i + 1}. ${file.name}`;
+          fileList.appendChild(fileInfo);
+        }
+        this.closest(".custom-file-upload").classList.add("border-primary");
+      } else {
+        fileList.innerHTML = '<div class="text-danger">请选择两张图片</div>';
+        this.closest(".custom-file-upload").classList.remove("border-primary");
+        this.value = "";
+      }
+    });
+
+  // 处理下载按钮点击事件
+  const downloadBtn = document.getElementById("downloadBtn");
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", function (e) {
+      // 检查按钮是否被禁用
+      if (this.classList.contains("disabled")) {
+        e.preventDefault();
+        return;
+      }
+
+      // 确保有效的下载链接
+      if (!this.href || this.href === "#") {
+        e.preventDefault();
+        return;
+      }
+
+      // 创建提示消息
+      const alert = document.createElement("div");
+      alert.className =
+        "flash-message alert alert-success alert-dismissible fade show";
+      alert.innerHTML = `
+        <div>图片开始下载，请检查浏览器下载栏</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+
+      // 添加到消息容器
+      document.querySelector(".flash-messages").appendChild(alert);
+
+      // 5秒后自动关闭提示
+      setTimeout(() => {
+        bootstrap.Alert.getOrCreateInstance(alert).close();
+      }, 5000);
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,830 @@
+{% extends "base.html" %} {% block title %}制作 Icon - Flask 工具集{% endblock
+%} {% block extra_css %}
+<style>
+  /* 页面背景 */
+  body {
+    background-color: #faf8f5 !important;
+  }
+
+  .card {
+    background-color: #faf8f5;
+    border: none;
+  }
+
+  .card-body {
+    background-color: #faf8f5;
+    padding: 0;
+  }
+
+  /* 主要布局 */
+  .main-layout {
+    display: flex;
+    min-height: 80vh;
+    background-color: #faf8f5;
+    position: relative;
+  }
+
+  /* 上传按钮 - 更大更明显 */
+  .upload-btn {
+    background: #0d6efd;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.2);
+  }
+
+  .upload-btn:hover {
+    background: #0b5ed7;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(13, 110, 253, 0.3);
+  }
+
+  .upload-btn i {
+    font-size: 18px;
+  }
+
+  /* 图片编辑区域 - 占60%宽度 */
+  .image-section {
+    flex: 0 0 60%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    position: relative;
+  }
+
+  .crop-container {
+    position: relative;
+    display: inline-block;
+    user-select: none;
+  }
+
+  .crop-image {
+    display: block;
+    max-width: 100%;
+    max-height: 70vh;
+    height: auto;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  .crop-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .crop-selection {
+    position: absolute;
+    border: 2px solid #fff;
+    background: rgba(0, 0, 0, 0.2);
+    cursor: move;
+    pointer-events: all;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+  }
+
+  .crop-selection::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 1px dashed rgba(255, 255, 255, 0.9);
+    pointer-events: none;
+  }
+
+  .crop-handle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border: 2px solid #0d6efd;
+    border-radius: 50%;
+    cursor: pointer;
+    pointer-events: all;
+  }
+
+  .crop-handle:hover {
+    background: #0d6efd;
+    border-color: #fff;
+    transform: scale(1.2);
+  }
+
+  .crop-handle.nw {
+    top: -7px;
+    left: -7px;
+    cursor: nw-resize;
+  }
+  .crop-handle.ne {
+    top: -7px;
+    right: -7px;
+    cursor: ne-resize;
+  }
+  .crop-handle.sw {
+    bottom: -7px;
+    left: -7px;
+    cursor: sw-resize;
+  }
+  .crop-handle.se {
+    bottom: -7px;
+    right: -7px;
+    cursor: se-resize;
+  }
+
+  /* 预览区域 - 占剩余40%宽度 */
+  .preview-section {
+    flex: 0 0 40%;
+    background: #f8f9fa;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-left: 1px solid #e9ecef;
+  }
+
+  .preview-container {
+    background: #fff;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    text-align: center;
+    max-width: 350px;
+    width: 100%;
+  }
+
+  .preview-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 25px;
+  }
+
+  .preview-icon {
+    width: 220px;
+    height: 220px;
+    border-radius: 20px;
+    border: 1px solid #dee2e6;
+    margin: 0 auto 20px;
+    display: block;
+    background: #fff;
+    object-fit: cover;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .preview-size {
+    font-size: 16px;
+    color: #6c757d;
+    margin-bottom: 30px;
+    font-weight: 500;
+  }
+
+  .generate-btn {
+    width: 100%;
+    padding: 15px;
+    background: #0d6efd;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .generate-btn:hover {
+    background: #0b5ed7;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(13, 110, 253, 0.3);
+  }
+
+  .generate-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .success-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #28a745;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    font-weight: 500;
+  }
+
+  .success-message.show {
+    transform: translateX(0);
+  }
+
+  /* 隐藏默认的预览区域 */
+  .old-preview-section {
+    display: none;
+  }
+
+  /* 响应式设计 */
+  @media (max-width: 768px) {
+    .main-layout {
+      flex-direction: column;
+    }
+
+    .image-section,
+    .preview-section {
+      flex: none;
+    }
+
+    .upload-section {
+      position: relative;
+      top: auto;
+      left: auto;
+      margin-bottom: 20px;
+    }
+
+    .upload-area {
+      width: 100%;
+      max-width: 300px;
+      margin: 0 auto;
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <button
+          class="upload-btn"
+          onclick="document.getElementById('imageInput').click()"
+        >
+          <i class="bi bi-cloud-upload"></i>
+          选择图片
+        </button>
+        <input
+          type="file"
+          id="imageInput"
+          accept="image/png,image/jpeg,image/jpg,image/webp"
+          style="display: none"
+        />
+      </div>
+      <div class="card-body">
+        <!-- 主要布局 -->
+        <div class="main-layout">
+          <!-- 图片编辑区域 -->
+          <div class="image-section" id="imageSection" style="display: none">
+            <div class="crop-container" id="cropContainer">
+              <img id="cropImage" class="crop-image" alt="待裁剪图片" />
+              <div class="crop-overlay">
+                <div class="crop-selection" id="cropSelection">
+                  <div class="crop-handle nw"></div>
+                  <div class="crop-handle ne"></div>
+                  <div class="crop-handle sw"></div>
+                  <div class="crop-handle se"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 预览区域 -->
+          <div
+            class="preview-section"
+            id="previewSection"
+            style="display: none"
+          >
+            <div class="preview-container">
+              <div class="preview-title">预览</div>
+              <canvas id="previewCanvas" class="preview-icon"></canvas>
+              <div class="preview-size" id="previewSize">220×220</div>
+              <button
+                type="button"
+                class="generate-btn"
+                onclick="generateIcons()"
+              >
+                生成并下载
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 旧的预览区域 - 隐藏 -->
+        {% if icons %}
+        <div class="old-preview-section">
+          <h4>生成的 Icon 预览</h4>
+          <div class="preview-grid">
+            {% for size, base64_data in icons.items() %}
+            <div class="preview-item">
+              <img
+                src="data:image/jpeg;base64,{{ base64_data }}"
+                class="preview-icon"
+                width="{{ size }}"
+                height="{{ size }}"
+                alt="{{ size }}x{{ size }} Icon"
+              />
+              <div class="small text-muted">{{ size }}×{{ size }}</div>
+              <a
+                href="data:image/jpeg;base64,{{ base64_data }}"
+                download="icon_{{ size }}x{{ size }}.jpg"
+                class="btn btn-sm btn-outline-primary mt-1"
+              >
+                下载
+              </a>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="text-center mt-3">
+            <button
+              type="button"
+              class="btn btn-success"
+              onclick="downloadAllIcons()"
+            >
+              下载全部 Icon
+            </button>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 隐藏的表单用于提交数据 -->
+<form
+  id="iconForm"
+  action="/icon_maker_process"
+  method="post"
+  enctype="multipart/form-data"
+  style="display: none"
+>
+  <input type="file" name="image" id="hiddenImageInput" />
+  <input type="hidden" name="crop_x" id="hiddenCropX" />
+  <input type="hidden" name="crop_y" id="hiddenCropY" />
+  <input type="hidden" name="crop_size" id="hiddenCropSize" />
+  <input type="hidden" name="scale" id="hiddenScale" />
+</form>
+{% endblock %} {% block extra_js %}
+<script>
+  let originalImage = null;
+  let isDragging = false;
+  let isResizing = false;
+  let currentHandle = null;
+  let dragStart = { x: 0, y: 0 };
+  let cropSelection = null;
+  let cropImage = null;
+  let cropContainer = null;
+  let previewCanvas = null;
+  let previewCtx = null;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const imageInput = document.getElementById("imageInput");
+
+    cropSelection = document.getElementById("cropSelection");
+    cropImage = document.getElementById("cropImage");
+    cropContainer = document.getElementById("cropContainer");
+    previewCanvas = document.getElementById("previewCanvas");
+    previewCtx = previewCanvas.getContext("2d");
+
+    // 设置预览canvas尺寸
+    previewCanvas.width = 220;
+    previewCanvas.height = 220;
+
+    // 文件上传处理
+    imageInput.addEventListener("change", handleImageUpload);
+
+    // 事件监听
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  });
+
+  function handleImageUpload(e) {
+    const file = e.target.files[0];
+    if (file) {
+      handleImageFile(file);
+    }
+  }
+
+  function handleImageFile(file) {
+    if (!file.type.startsWith("image/")) {
+      alert("请选择图片文件");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      originalImage = new Image();
+      originalImage.onload = function () {
+        cropImage.src = e.target.result;
+        // 显示图片编辑区域和预览区域
+        document.getElementById("imageSection").style.display = "flex";
+        document.getElementById("previewSection").style.display = "flex";
+        setTimeout(initializeCropArea, 100);
+      };
+      originalImage.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    // 保存文件到隐藏输入框
+    const hiddenInput = document.getElementById("hiddenImageInput");
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    hiddenInput.files = dt.files;
+  }
+
+  function initializeCropArea() {
+    if (cropImage.offsetWidth === 0 || cropImage.offsetHeight === 0) {
+      setTimeout(initializeCropArea, 50);
+      return;
+    }
+
+    // 设置初始裁剪区域 - 根据图片高度的60%来调整
+    const initialSize = Math.min(
+      cropImage.offsetHeight * 0.6,
+      cropImage.offsetWidth * 0.6
+    );
+
+    const centerX = (cropImage.offsetWidth - initialSize) / 2;
+    const centerY = (cropImage.offsetHeight - initialSize) / 2;
+
+    updateCropSelection(centerX, centerY, initialSize);
+    cropSelection.style.display = "block";
+
+    // 添加事件监听
+    setupCropEvents();
+    updatePreview();
+    updatePreviewSize();
+  }
+
+  function handleCropMouseDown(e) {
+    // 如果点击的是手柄，不处理拖拽
+    if (e.target.classList.contains("crop-handle")) {
+      return;
+    }
+    startDrag(e);
+  }
+
+  function handleHandleMouseDown(e) {
+    startResize(e);
+  }
+
+  function setupCropEvents() {
+    // 移除所有现有的事件监听器
+    cropSelection.removeEventListener("mousedown", handleCropMouseDown);
+
+    // 裁剪区域拖拽 - 使用addEventListener确保事件正确绑定
+    cropSelection.addEventListener("mousedown", handleCropMouseDown);
+
+    // 角落拖拽手柄 - 单独处理
+    const handles = cropSelection.querySelectorAll(".crop-handle");
+    handles.forEach((handle) => {
+      handle.removeEventListener("mousedown", handleHandleMouseDown);
+      handle.addEventListener("mousedown", handleHandleMouseDown);
+    });
+  }
+
+  function startDrag(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging = true;
+
+    // 获取当前选框位置
+    const currentLeft = parseInt(cropSelection.style.left) || 0;
+    const currentTop = parseInt(cropSelection.style.top) || 0;
+
+    // 记录鼠标相对于选框的偏移
+    const containerRect = cropContainer.getBoundingClientRect();
+    dragStart.x = e.clientX - containerRect.left - currentLeft;
+    dragStart.y = e.clientY - containerRect.top - currentTop;
+
+    // 添加拖拽样式
+    cropSelection.style.cursor = "grabbing";
+    document.body.style.userSelect = "none";
+  }
+
+  function startResize(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    isResizing = true;
+    currentHandle = e.target.classList[1]; // nw, ne, sw, se
+
+    // 获取当前选框的位置和尺寸
+    dragStart.cropX = parseInt(cropSelection.style.left) || 0;
+    dragStart.cropY = parseInt(cropSelection.style.top) || 0;
+    dragStart.cropWidth = parseInt(cropSelection.style.width) || 0;
+    dragStart.cropHeight = parseInt(cropSelection.style.height) || 0;
+
+    // 记录鼠标起始位置
+    dragStart.x = e.clientX;
+    dragStart.y = e.clientY;
+
+    document.body.style.userSelect = "none";
+  }
+
+  function handleMouseMove(e) {
+    if (isDragging) {
+      handleDrag(e);
+    } else if (isResizing) {
+      handleResize(e);
+    }
+  }
+
+  function handleDrag(e) {
+    if (!isDragging) return;
+
+    e.preventDefault();
+
+    // 计算新位置
+    const containerRect = cropContainer.getBoundingClientRect();
+    const newX = e.clientX - containerRect.left - dragStart.x;
+    const newY = e.clientY - containerRect.top - dragStart.y;
+
+    // 获取选框尺寸
+    const selectionWidth = parseInt(cropSelection.style.width) || 0;
+    const selectionHeight = parseInt(cropSelection.style.height) || 0;
+
+    // 限制在图片范围内
+    const maxX = cropImage.offsetWidth - selectionWidth;
+    const maxY = cropImage.offsetHeight - selectionHeight;
+
+    const clampedX = Math.max(0, Math.min(newX, maxX));
+    const clampedY = Math.max(0, Math.min(newY, maxY));
+
+    // 直接设置位置，不调用updateCropSelection避免重复计算
+    cropSelection.style.left = clampedX + "px";
+    cropSelection.style.top = clampedY + "px";
+
+    // 更新预览
+    updatePreview();
+    updatePreviewSize();
+  }
+
+  function handleResize(e) {
+    e.preventDefault();
+
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+
+    let newX = dragStart.cropX;
+    let newY = dragStart.cropY;
+    let newSize = Math.min(dragStart.cropWidth, dragStart.cropHeight);
+
+    // 根据拖拽的角落调整尺寸和位置
+    switch (currentHandle) {
+      case "nw":
+        newSize = Math.min(
+          dragStart.cropWidth - deltaX,
+          dragStart.cropHeight - deltaY
+        );
+        newX = dragStart.cropX + (dragStart.cropWidth - newSize);
+        newY = dragStart.cropY + (dragStart.cropHeight - newSize);
+        break;
+      case "ne":
+        newSize = Math.min(
+          dragStart.cropWidth + deltaX,
+          dragStart.cropHeight - deltaY
+        );
+        newY = dragStart.cropY + (dragStart.cropHeight - newSize);
+        break;
+      case "sw":
+        newSize = Math.min(
+          dragStart.cropWidth - deltaX,
+          dragStart.cropHeight + deltaY
+        );
+        newX = dragStart.cropX + (dragStart.cropWidth - newSize);
+        break;
+      case "se":
+        newSize = Math.min(
+          dragStart.cropWidth + deltaX,
+          dragStart.cropHeight + deltaY
+        );
+        break;
+    }
+
+    // 限制最小和最大尺寸
+    newSize = Math.max(
+      50,
+      Math.min(newSize, Math.min(cropImage.offsetWidth, cropImage.offsetHeight))
+    );
+
+    // 确保不超出图片边界
+    newX = Math.max(0, Math.min(newX, cropImage.offsetWidth - newSize));
+    newY = Math.max(0, Math.min(newY, cropImage.offsetHeight - newSize));
+
+    updateCropSelection(newX, newY, newSize);
+    updatePreview();
+    updatePreviewSize();
+  }
+
+  function handleMouseUp() {
+    if (isDragging) {
+      // 恢复拖拽样式
+      cropSelection.style.cursor = "move";
+      document.body.style.userSelect = "";
+    }
+
+    if (isResizing) {
+      // 恢复用户选择
+      document.body.style.userSelect = "";
+    }
+
+    isDragging = false;
+    isResizing = false;
+    currentHandle = null;
+  }
+
+  function updateCropSelection(x, y, size) {
+    cropSelection.style.left = x + "px";
+    cropSelection.style.top = y + "px";
+    cropSelection.style.width = size + "px";
+    cropSelection.style.height = size + "px";
+  }
+
+  function updatePreview() {
+    if (!originalImage || !cropSelection) return;
+
+    const scaleX = originalImage.naturalWidth / cropImage.offsetWidth;
+    const scaleY = originalImage.naturalHeight / cropImage.offsetHeight;
+
+    const cropX = parseInt(cropSelection.style.left) * scaleX;
+    const cropY = parseInt(cropSelection.style.top) * scaleY;
+    const cropSize =
+      parseInt(cropSelection.style.width) * Math.min(scaleX, scaleY);
+
+    // 清空画布
+    previewCtx.clearRect(0, 0, 220, 220);
+
+    // 绘制裁剪后的图片
+    previewCtx.drawImage(
+      originalImage,
+      cropX,
+      cropY,
+      cropSize,
+      cropSize,
+      0,
+      0,
+      220,
+      220
+    );
+  }
+
+  function updatePreviewSize() {
+    if (!originalImage || !cropSelection) return;
+
+    const scaleX = originalImage.naturalWidth / cropImage.offsetWidth;
+    const scaleY = originalImage.naturalHeight / cropImage.offsetHeight;
+
+    // 计算实际的裁剪尺寸（原始图片像素）
+    const actualCropSize = Math.round(
+      parseInt(cropSelection.style.width) * Math.min(scaleX, scaleY)
+    );
+
+    // 更新预览尺寸显示
+    const previewSizeElement = document.getElementById("previewSize");
+    previewSizeElement.textContent = `${actualCropSize}×${actualCropSize}`;
+  }
+
+  function generateIcons() {
+    if (!originalImage) {
+      alert("请先选择图片");
+      return;
+    }
+
+    // 显示加载状态
+    const btn = document.querySelector(".generate-btn");
+    btn.disabled = true;
+    btn.textContent = "生成中...";
+
+    // 计算实际坐标和尺寸
+    const scaleX = originalImage.naturalWidth / cropImage.offsetWidth;
+    const scaleY = originalImage.naturalHeight / cropImage.offsetHeight;
+
+    const cropX = parseInt(cropSelection.style.left) * scaleX;
+    const cropY = parseInt(cropSelection.style.top) * scaleY;
+    const cropSize =
+      parseInt(cropSelection.style.width) * Math.min(scaleX, scaleY);
+
+    // 设置表单数据
+    document.getElementById("hiddenCropX").value = Math.round(cropX);
+    document.getElementById("hiddenCropY").value = Math.round(cropY);
+    document.getElementById("hiddenCropSize").value = Math.round(cropSize);
+    document.getElementById("hiddenScale").value = 1;
+
+    // 创建一个临时的表单提交处理
+    const form = document.getElementById("iconForm");
+    const originalAction = form.action;
+
+    // 使用fetch提交表单
+    const formData = new FormData(form);
+
+    fetch(originalAction, {
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        }
+        throw new Error("生成失败");
+      })
+      .then((data) => {
+        if (data.success) {
+          // 自动下载PNG文件
+          downloadBase64File(data.png_data, data.png_filename, "image/png");
+
+          // 延迟500ms后下载ICO文件，避免浏览器阻止多个下载
+          setTimeout(() => {
+            downloadBase64File(
+              data.ico_data,
+              data.ico_filename,
+              "image/x-icon"
+            );
+          }, 500);
+
+          // 显示成功消息
+          showSuccessMessage("PNG和ICO文件已生成并下载！");
+        } else {
+          throw new Error(data.error || "生成失败");
+        }
+      })
+      .catch((error) => {
+        alert("生成失败，请重试");
+        console.error("Error:", error);
+      })
+      .finally(() => {
+        // 恢复按钮状态
+        btn.disabled = false;
+        btn.textContent = "生成并下载";
+      });
+  }
+
+  function downloadBase64File(base64Data, filename, mimeType) {
+    // 将base64转换为blob
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: mimeType });
+
+    // 创建下载链接
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }
+
+  function showSuccessMessage(message) {
+    // 创建成功消息元素
+    const successDiv = document.createElement("div");
+    successDiv.className = "success-message";
+    successDiv.textContent = message;
+    document.body.appendChild(successDiv);
+
+    // 显示消息
+    setTimeout(() => {
+      successDiv.classList.add("show");
+    }, 100);
+
+    // 3秒后隐藏消息
+    setTimeout(() => {
+      successDiv.classList.remove("show");
+      setTimeout(() => {
+        document.body.removeChild(successDiv);
+      }, 300);
+    }, 3000);
+  }
+
+  function downloadAllIcons() {
+    const previewItems = document.querySelectorAll(".preview-item a[download]");
+    previewItems.forEach((link, index) => {
+      setTimeout(() => {
+        link.click();
+      }, index * 200);
+    });
+  }
+</script>
+{% endblock %}
